@@ -3,6 +3,8 @@
 #include <geometry_msgs/Twist.h>
 #include <math.h>
 
+
+
 class OdometryToVelocityNode {
 public:
     OdometryToVelocityNode();
@@ -17,30 +19,28 @@ private:
     ros::Publisher odom_pub_;
     ros::Timer timer_;
     ros::Time start_time_;    
-    nav_msgs::Odometry odometry;    
+    nav_msgs::Odometry odometry;  
+      
     double loop_rate = 0.05;
 
 };
 
 OdometryToVelocityNode::OdometryToVelocityNode() {
-    // Obtener el parámetro de frecuencia del nodo
-    nh_.param<double>("/loop_rate", loop_rate, 0.05);
 
+    nh_.param<double>("/loop_rate", loop_rate, 0.05);
     // Suscribirse al topic de odometría
     odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &OdometryToVelocityNode::odomCallback, this);
-
     // Publicar en el topic de velocidad
     velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-
+    odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom2", 1);
     // Crear un temporizador con la frecuencia deseada
     timer_ = nh_.createTimer(ros::Duration(loop_rate), &OdometryToVelocityNode::timerCallback, this);
-
-    // Inicializar el tiempo de inicio del nodo
     start_time_ = ros::Time::now();
 }
 
 void OdometryToVelocityNode::odomCallback(const nav_msgs::Odometry::ConstPtr& msg) {
     // Leer los datos de odometría del mensaje
+    
     odometry.pose.pose.orientation.x = msg->pose.pose.orientation.x;
     odometry.pose.pose.orientation.y = msg->pose.pose.orientation.y;
     odometry.pose.pose.orientation.z = msg->pose.pose.orientation.z;
