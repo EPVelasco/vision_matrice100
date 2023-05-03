@@ -29,10 +29,10 @@ OdometryToVelocityNode::OdometryToVelocityNode() {
 
     nh_.param<double>("/loop_rate", loop_rate, 0.05);
     // Suscribirse al topic de odometría
-    odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/odom", 1, &OdometryToVelocityNode::odomCallback, this);
+    odom_sub_ = nh_.subscribe<nav_msgs::Odometry>("/dji_sdk/odometry", 1, &OdometryToVelocityNode::odomCallback, this);
     // Publicar en el topic de velocidad
-    velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-    odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom2", 1);
+    velocity_pub_ = nh_.advertise<geometry_msgs::Twist>("/m100/velocityControl", 1);
+    odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/dji_sdk/odometry2", 1);
     // Crear un temporizador con la frecuencia deseada
     timer_ = nh_.createTimer(ros::Duration(loop_rate), &OdometryToVelocityNode::timerCallback, this);
     start_time_ = ros::Time::now();
@@ -49,11 +49,11 @@ void OdometryToVelocityNode::odomCallback(const nav_msgs::Odometry::ConstPtr& ms
     odometry.pose.pose.position.y = msg->pose.pose.position.y;
     odometry.pose.pose.position.z = msg->pose.pose.position.z;
     odometry.twist.twist.linear.x = msg->twist.twist.linear.x;
-    odometry.twist.twist.linear.y = msg->twist.twist.linear.x;
-    odometry.twist.twist.linear.z = msg->twist.twist.linear.x;
+    odometry.twist.twist.linear.y = msg->twist.twist.linear.y;
+    odometry.twist.twist.linear.z = msg->twist.twist.linear.z;
     odometry.twist.twist.angular.x = msg->twist.twist.linear.x;
-    odometry.twist.twist.angular.y = msg->twist.twist.linear.x;
-    odometry.twist.twist.angular.z = msg->twist.twist.linear.x;
+    odometry.twist.twist.angular.y = msg->twist.twist.linear.y;
+    odometry.twist.twist.angular.z = msg->twist.twist.linear.z;
 
 }
 
@@ -62,15 +62,24 @@ void OdometryToVelocityNode::timerCallback(const ros::TimerEvent& event) {
     ros::Time current_time = ros::Time::now();
     ros::Duration elapsed_time = current_time - start_time_;
 
+    // Publicar la velocidad deseada y la odometria para nueva lectura
+    geometry_msgs::Twist desired_velocity_;
+
     // Comprobar si ha pasado más de 30 segundos
     if (elapsed_time.toSec() >= 30.0) {
         ROS_INFO("El programa ha finalizado después de %f segundos.", elapsed_time.toSec());
+
+        desired_velocity_.linear.z = 0.0;  // fuerza        
+        desired_velocity_.angular.x = 0.0;    // torque x
+        desired_velocity_.angular.y = 0.0;    // torque y
+        desired_velocity_.angular.z = 0.0;    // torque z
+
+        velocity_pub_.publish(desired_velocity_);
+        odom_pub_.publish(odometry);
+   
         ros::shutdown(); // Detener el nodo
         return;
     }
-
-    // Publicar la velocidad deseada y la odometria para nueva lectura
-    geometry_msgs::Twist desired_velocity_;
 
     // Calcular la señal seno en función del tiempo transcurrido
     double t = elapsed_time.toSec();
