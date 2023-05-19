@@ -3,7 +3,17 @@
 
 	<param name="maxlen"                type="double" value="8.0" />
 	<param name="minlen"                type="double" value="0.0" />
-    <param name="angle_vertical_lines"  type="double" value="5.0" />
+    <param name="angle_vertical_lines"  type="double" value="90.0" />
+
+    <param name="minCan"  type="double" value="20.0" />
+    <param name="maxCan"  type="double" value="50.0" />
+
+    <param name="rho"  type="double" value="1.0" />
+    <param name="theta"  type="double" value="0.017453293" />
+    <param name="threshold"  type="double" value="100.0" />
+    <param name="minlen"  type="double" value="100.0" />
+    <param name="maxlen"  type="double" value="0.0" />
+
     <param name="odom_dron"             type="str" value="/drone/odometry" />  
 
  	<param name="imgTopic"   type="str" value="/camera/color/image_raw"/>
