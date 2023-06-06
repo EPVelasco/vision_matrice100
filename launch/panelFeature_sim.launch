@@ -7,6 +7,9 @@
 
     <param name="minCan"  type="double" value="20.0" />
     <param name="maxCan"  type="double" value="50.0" />
+    <param name="angle_desired"  type="double" value="1.5708" />
+    
+    <param name="control_ok"  type="bool" value="true" />
 
     <param name="rho"  type="double" value="1.0" />
     <param name="theta"  type="double" value="0.017453293" />
@@ -14,10 +17,14 @@
     <param name="minlen"  type="double" value="100.0" />
     <param name="maxlen"  type="double" value="0.0" />
 
-    <param name="odom_dron"             type="str" value="/drone/odometry" />  
+    <param name="odom_dron"             type="str" value="/dji_sdk/odometry" />  
 
  	<param name="imgTopic"   type="str" value="/camera/color/image_raw"/>
 	<param name="depthTopic" type="str" value="/camera/aligned_depth_to_color/image_raw" /> 
+
+    <param name="publish_vel_topic" type="str" value="/dji_sdk/visual_servoing" /> 
+
+    
 
     <param name="real_flag"              type="bool" value="false" />
     <param name="tfPCL" type="str"       value="world" /> 

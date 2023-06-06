@@ -13,6 +13,8 @@
     <param name="tfPCL"                 type="str"  value="world" /> 
     <param name="tf_word_or_sensor"     type="bool" value="true" /> <!-- true world false sensor -->
 
+    <param name="control_ok"  type="bool" value="false" />
+
 <!-- params -->
 
     <group ns="vision_params">

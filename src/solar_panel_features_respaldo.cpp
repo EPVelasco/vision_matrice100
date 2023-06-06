@@ -2,7 +2,15 @@
 #include <limits>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
+//#include <pcl_ros/point_cloud.h>
+//#include <pcl_conversions/pcl_conversions.h>
 #include <image_transport/image_transport.h>
+//#include <pcl/point_types.h>
+//#include <pcl/range_image/range_image.h>
+//#include <pcl/range_image/range_image_spherical.h>
+//#include <pcl/filters/filter.h>
+//#include <pcl/filters/voxel_grid.h>
+//#include <pcl/impl/point_types.hpp>
 #include <opencv2/core/core.hpp>
 #include <iostream>
 #include <Eigen/Dense>
@@ -19,11 +27,23 @@
 
 #include <sensor_msgs/NavSatFix.h>
 
+
+
+// #include <pcl/filters/statistical_outlier_removal.h>
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/eigen.hpp>
 #include <iostream>
 #include <chrono> 
+
+// ransac
+// #include <pcl/console/parse.h>
+// #include <pcl/filters/extract_indices.h>
+// #include <pcl/io/pcd_io.h>
+// #include <pcl/sample_consensus/ransac.h>
+// #include <pcl/sample_consensus/sac_model_plane.h>
+// #include <pcl/sample_consensus/sac_model_sphere.h>
 
 // markers
 #include <visualization_msgs/Marker.h>
@@ -55,7 +75,6 @@ std::string imgTopic   = "/camera/color/image_raw";
 std::string depthTopic = "/camera/aligned_depth_to_color/image_raw";
 std::string odom_dron  = "/dji_sdk/odometry";
 std::string tf_pcl     = "camera_link";
-std::string vel_topic = "/m100/velocityControl";
 bool tf_wOs = true;  // true mundo,  false sensor
 bool control_ok = true;
 
@@ -89,8 +108,8 @@ Eigen::MatrixXf q_vel_cam(6,1) ; // velocidades del control servovisual
 
 ///////////////////////////////////////callback
 //void callback(const ImageConstPtr& in_RGB , const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
-void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
-//void callback(const ImageConstPtr& in_depth)
+//void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
+void callback(const ImageConstPtr& in_depth)
 {
   auto t1 = Clock::now();
 
@@ -107,7 +126,7 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
       }
 
   // // Acceder a los datos del mensaje de Odometry
-  // 
+  // const double x_orient_odom = odom_msg->pose.pose.orientation.x;
   // const double y_orient_odom = odom_msg->pose.pose.orientation.y;
   // const double z_orient_odom = odom_msg->pose.pose.orientation.z;
   // const double w_orient_odom = odom_msg->pose.pose.orientation.w;
@@ -115,8 +134,7 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
   // const double x_twist_odom = odom_msg->twist.twist.angular.x;
   // const double y_twist_odom = odom_msg->twist.twist.angular.y;
   // const double z_twist_odom = odom_msg->twist.twist.angular.z;
-  const double z_dron = odom_msg->pose.pose.position.z;
-  std::cout<<"z_dron: "<<std::endl;
+
 
   //cv::Mat img_rgbCam    = cv_rgbCam->image;
   cv::Mat depth_img  = cv_depthCam->image;
@@ -194,7 +212,7 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
   // Dibujar las líneas aproximadas en la imagen original
   cv::Mat resultImage;
   cv::cvtColor(filtered_image, resultImage, cv::COLOR_GRAY2BGR);
-  float ang1 = 0 ,ang2 = 0, x11 = 0, x12 = 0, y11 =0 , y12 =0, x21 = 0, x22 = 0, y21 =0 , y22 =0 , vyl1 = 0, vyl2 = 0,  yl1 = 0, yl2 = 0;
+  float ang1 = 0 ,ang2 = 0, x11 = 0, x12 = 0, y11 =0 , y12 =0, x21 = 0, x22 = 0, y21 =0 , y22 =0 , vxl1 = 0, vxl2 = 0, vyl1 = 0, vyl2 = 0, xl1 =0, yl1 = 0, xl2=0, yl2 = 0;
   float ang_ori1 = 0, ang_ori2 = 0;
   bool flag_lin1 = false, flag_lin2 = false;
   for (const auto& line : linesap) {
@@ -216,7 +234,9 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
         y12 = pt2.y; 
         ang1 = std::atan2(y12-y11, x12-x11) * 180 / CV_PI;
         ang_ori1 = ang1;
+        vxl1 = vx;
         vyl1 = vy;
+        xl1 = x;
         yl1 =y;
 
         if (vy>0){
@@ -234,7 +254,9 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
         y21 = pt1.y; 
         x22 = pt2.x;
         y22 = pt2.y; 
+        vxl2 = vx;
         vyl2 = vy;
+        xl2 = x;
         yl2 = y;
 
         ang2 = std::atan2(y22-y21, x22-x21) * 180 / CV_PI;
@@ -313,13 +335,27 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
       median = (depthValues[n / 2 - 1] + depthValues[n / 2]) / 2.0;
   else
       median = depthValues[n / 2];
+
+
   double pixel_factor = 1000000.0/median;
+
+  // puntos del cuadrado
+  float p1_tx = (xc + pixel_factor*cos(ang_t));
+  float p1_ty = (yc + pixel_factor*sin(ang_t));
+  float p2_tx = (xc - pixel_factor*cos(ang_t));
+  float p2_ty = (yc - pixel_factor*sin(ang_t));
 
   // puntos verticales
   float pv1_tx = (xc + pixel_factor*cos(ang_t-CV_PI/2));
   float pv1_ty = (yc + pixel_factor*sin(ang_t-CV_PI/2));
   float pv2_tx = (xc - pixel_factor*cos(ang_t-CV_PI/2));
   float pv2_ty = (yc - pixel_factor*sin(ang_t-CV_PI/2));
+
+ 
+  float p3_tx = p1_tx - (pixel_factor*cos(ang_ori1-(2*ang_t)));
+  float p3_ty = p1_ty + (pixel_factor*sin(ang_ori1+(2*ang_t)));
+  float p4_tx = p2_tx - (pixel_factor*cos(ang_ori2-(2*ang_t)));
+  float p4_ty = p2_ty + (pixel_factor*sin(ang_ori2+(2*ang_t)));
 
 
   // Deteccion de lineas del medio 
@@ -328,6 +364,8 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
   // Aplica la transformada de Hough
   cv::Mat line_path_img = cv::Mat::zeros(rows_img, cols_img, CV_8UC1);
   cv::line(line_path_img, cv::Point(pv1_tx, pv1_ty), cv::Point(pv2_tx, pv2_ty), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+
+  //cv::line(line_path_img, cv::Point(248, 10), cv::Point(50, 419), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
   
   std::vector<cv::Vec2f> lineas;
@@ -371,23 +409,36 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
   
 
-  // // puntos del cuadrado 
-  // cv::Point pt1_pl(p1_tx,p1_ty);
-  // cv::Point pt2_pl(p2_tx,p2_ty);
-  // cv::Point pt3_pl(p3_tx,p3_ty);
-  // cv::Point pt4_pl(p4_tx,p4_ty);
+  // puntos del cuadrado 
+  cv::Point pt1_pl(p1_tx,p1_ty);
+  cv::Point pt2_pl(p2_tx,p2_ty);
+  cv::Point pt3_pl(p3_tx,p3_ty);
+  cv::Point pt4_pl(p4_tx,p4_ty);
 
-  // std::cout<<"angt: "<<ang_t<<"ang1: "<<ang1<<"ang2: "<<ang2<<std::endl;
-  // std::cout<<"x1: " <<pt1_pl<<" p1: " <<std::endl;
-  // std::cout<<"x2: " <<pt2_pl<<" p2: " <<std::endl;
-  // std::cout<<"x3: " <<pt3_pl<<" p3: " <<std::endl;
-  // std::cout<<"x4: " <<pt4_pl<<" p4: " <<std::endl;
+  std::cout<<"angt: "<<ang_t<<"ang1: "<<ang1<<"ang2: "<<ang2<<std::endl;
+  std::cout<<"x1: " <<pt1_pl<<" p1: " <<std::endl;
+  std::cout<<"x2: " <<pt2_pl<<" p2: " <<std::endl;
+  std::cout<<"x3: " <<pt3_pl<<" p3: " <<std::endl;
+  std::cout<<"x4: " <<pt4_pl<<" p4: " <<std::endl;
 
   // Dibujar puntos deseados // deberia sacar la inversa de los puntos deseados de spxd (cuando haya tiempo hacemos)
-  // cv::Point pt1_d(414, 242);
-  // cv::Point pt2_d(199, 237);
-  // cv::Point pt3_d(418, 135);
-  // cv::Point pt4_d(201, 129);
+  cv::Point pt1_d(414, 242);
+  cv::Point pt2_d(199, 237);
+  cv::Point pt3_d(418, 135);
+  cv::Point pt4_d(201, 129);
+
+  // cv::circle(resultImage, pt1_d, 5, cv::Scalar(0, 255, 0), -1);
+  // cv::circle(resultImage, pt2_d, 5, cv::Scalar(255, 0, 0), -1);
+  // cv::circle(resultImage, pt3_d, 5, cv::Scalar(0, 0, 255), -1);
+  // cv::circle(resultImage, pt4_d, 5, cv::Scalar(255, 0, 255),-1);
+
+  // cv::circle(resultImage, pt1_pl, 6, cv::Scalar(0, 255, 0), 1);
+  // cv::circle(resultImage, pt2_pl, 6, cv::Scalar(255, 0, 0), 1);
+  // cv::circle(resultImage, pt3_pl, 6, cv::Scalar(0, 0, 255), 1);
+  // cv::circle(resultImage, pt4_pl, 6, cv::Scalar(255, 0, 255),1);
+
+  // cv::circle(resultImage, center, 6, cv::Scalar(0, 0, 255),2);
+  // cv::circle(resultImage, cv::Point(int(imageWidth/2),int(imageHeight/2)), 2, cv::Scalar(255, 255, 255),2);
 
   cv::Point pv1(pv1_tx, pv1_ty);
   cv::Point pv2(pv2_tx, pv2_ty);
@@ -396,9 +447,10 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
    cv::circle(resultImage, pv2, 3, cv::Scalar(255, 0, 0),3);
 
 
+
   // calculo de angulo solo para verificar
-  // float angle_pixel = std::atan2(pt2_pl.x-pt1_pl.x,pt2_pl.y-pt1_pl.y);
-  // std::cout<<"angt: "<<ang_t<<" angle_pixel: "<<angle_pixel<<std::endl;
+  float angle_pixel = std::atan2(pt2_pl.x-pt1_pl.x,pt2_pl.y-pt1_pl.y);
+  std::cout<<"angt: "<<ang_t<<" angle_pixel: "<<angle_pixel<<std::endl;
   
   // sistema de coordenas
    cv::circle(resultImage, center, 3, cv::Scalar(255, 0, 0), 3);
@@ -408,25 +460,62 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
 
 
+
   // //===================================================== jacobiana imagen ================================================================
 
     float lx = Mc(0,0);// focal de la camarax
     float ly = Mc(1,1);// focal de la camaray
     float zr = depthMean;
+    Eigen::MatrixXf Spx(8,1);   // 4 puntos x,y en pixeles que la deteccion de los paneles puntos acutales
 
+    Spx(0,0) = pt1_pl.x;
+    Spx(1,0) = pt1_pl.y;
+    Spx(2,0) = pt2_pl.x;
+    Spx(3,0) = pt2_pl.y;
+
+    Spx(4,0) = pt3_pl.x;
+    Spx(5,0) = pt3_pl.y;
+    Spx(6,0) = pt4_pl.x;
+    Spx(7,0) = pt4_pl.y;
 
   // cambio de sistema de referencias de los puntos del centro de imagen
+
+  // matriz de traslaciones con el centro de la camara
   float cx = Mc(0,2);
   float cy = Mc(1,2);
-  Eigen::MatrixXf Hc(4,4);    // matriz de traslaciones con el centro de la camara
+  Eigen::MatrixXf Hc(4,4); 
   Hc <<  1,0,0,cx
         ,0,1,0,cy
         ,0,0,1,0
         ,0,0,0,1;
 
+  //Eigen::MatrixXf pin_Hc = Hc.completeOrthogonalDecomposition().pseudoInverse();
   Eigen::MatrixXf pin_Hc = Hc.inverse();
 
-  //////  cambio de referencia del punto sacado con Hough a medidas con el centro de la iamgen
+  Eigen::MatrixXf x_c (4,4);
+  x_c<< Spx(0,0), Spx(2,0), Spx(4,0), Spx(6,0),
+        Spx(1,0), Spx(3,0), Spx(5,0), Spx(7,0),
+        0,        0,        0,        0,
+        1,        1,        1,        1;
+
+  // x_c<< Spx(0,0), Spx(2,0), 
+  //       Spx(1,0), Spx(3,0), 
+  //       0,        0,        
+  //       1,        1       ;
+
+
+
+  Eigen::MatrixXf x_ct (4,4);
+  x_ct = pin_Hc * x_c;
+
+  for (int i = 0;i<4;i++){
+    for (int j = 0;j<4;j++){
+      std::cout<< x_ct(i,j)<<", ";
+    }
+     std::cout<<std::endl;
+  }
+
+  //////  cambio de referencia del punto sacado con Hough
   Eigen::MatrixXf x_hough  (4,2);
   Eigen::MatrixXf x_chough (4,2);
   x_hough << pv1_tx, pv2_tx,
@@ -443,14 +532,74 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
   std::cout<<"x_chough_dist: "<<dist_choug<<std::endl;
   std::cout<<"x_chough_dist_comp_X: "<<dist_choug*cos(ang_chough)<<std::endl;
 
+  // normalizado de dist_choug
+  //dist_choug = dist_choug/(sqrt(pow(imageHeight/2,2)+pow(imageWidth/2,2)));
+  //std::cout<<"x_chough_dist_normalizado: "<<dist_choug<<std::endl;
+
+  // jacobiana de rho con thetha
+  Eigen::MatrixXf J_n(2,2);  //jacobiana de rho con thetha inversa
+  J_n << cos(ang_chough)            , sin (ang_chough)
+       ,-sin(ang_chough)/dist_choug , cos(ang_chough)/dist_choug;
+
+  Eigen::MatrixXf J_im_pt(2,6); // jacobiana de imagen 1 punto
+  J_im_pt << -(lx/zr) ,0.0    ,x_chough(0,0)/zr  , (x_chough(0,0)*x_chough(1,0))/lx          ,-((lx*lx+x_chough(0,0)*x_chough(0,0))/lx)  , x_chough(1,0)
+            ,0.0    ,(-ly/zr) ,x_chough(1,0)/zr  , (ly*ly+ (x_chough(1,0)*x_chough(1,0)))/ly ,-(x_chough(0,0)*x_chough(1,0))/ly          ,-x_chough(0,0);
+
+  
+  // Eigen::MatrixXf J_aux(2,2);  //jacobiana aux
+  // J_aux << cos(ang_chough) ,- dist_choug*sin(ang_chough),
+  //         0.0              , 1 ;
+
+  Eigen::MatrixXf Jim_n(2,6); // nueva jacobiana como peter corke pag 484
+  Jim_n = J_n * J_im_pt;
+
+  Eigen::MatrixXf pin_Jim_n = Jim_n.completeOrthogonalDecomposition().pseudoInverse();//jacobiana inversa
+
+  Eigen::MatrixXf q_rt(2,1);
+  Eigen::MatrixXf err_rt(2,1);
+  Eigen::MatrixXf des_rt(2,1);
+  Eigen::MatrixXf cur_rt(2,1);
+  des_rt << 109.0, CV_PI/2;
+  cur_rt << dist_choug, ang_chough;
+
+  err_rt = (des_rt - cur_rt);
+  err_rt << lambda(0,0)*err_rt(0) , lambda(1,0)*err_rt(1);
+
+  q_rt = pin_Jim_n * err_rt;
+
+
+  //cv::circle(resultImage, cv::Point(x_chough(0,0),x_chough(1,0)), 3, cv::Scalar(255, 255, 0),-1); 
+
   /////////////////////////////////////////////////////////////////////
-  Eigen::MatrixXf Spx(4,1);   // 4 puntos x,y en pixeles que la deteccion de los paneles puntos acutales
+
+  // Spx(0,0) = x_ct(0,0);
+  // Spx(1,0) = x_ct(1,0);
+  // Spx(2,0) = x_ct(0,1);
+  // Spx(3,0) = x_ct(1,1);
+  // Spx(4,0) = x_ct(0,2);
+  // Spx(5,0) = x_ct(1,2);
+  // Spx(6,0) = x_ct(0,3);
+  // Spx(7,0) = x_ct(1,3);  
+  
   Spx(0,0) = x_chough(0,0);
   Spx(1,0) = x_chough(1,0);
   Spx(2,0) = x_chough(0,1);
   Spx(3,0) = x_chough(1,1);
 
-  Eigen::MatrixXf J_img(4,6); // jacobiana de imagen de 4 puntos de los objetos (4*2 x 6) matriz de medidas 8x6
+    // Eigen::MatrixXf J_img(8,6); // jacobiana de imagen de 2 puntos de los objetos (2*2 x 6) matriz de medidas 4x6
+    // J_img << -(lx/zr) ,0.0    ,Spx(0,0)/zr  , (Spx(0,0)*Spx(1,0))/lx     , -((lx+Spx(0,0)*Spx(0,0))/lx),Spx(1,0)
+    //         ,0.0    ,(-ly/zr) ,Spx(1,0)/zr  , (ly+ (Spx(1,0)*Spx(1,0)))/ly  ,-(Spx(0,0)*Spx(1,0))/ly   ,-Spx(0,0)
+
+    //         ,-(lx/zr) ,0.0    ,Spx(2,0)/zr  , (Spx(2,0)*Spx(3,0))/lx     ,-((lx+Spx(2,0)*Spx(2,0))/lx) , Spx(3,0)
+    //         ,0.0    ,(-ly/zr) ,Spx(3,0)/zr  , (ly+ Spx(3,0)*Spx(3,0))/ly  ,-(Spx(2,0)*Spx(3,0))/ly     ,-Spx(2,0);
+
+    //         ,-(lx/zr) ,0.0    ,Spx(4,0)/zr  , (Spx(4,0)*Spx(5,0))/lx     ,-((lx+Spx(4,0)*Spx(4,0))/lx) , Spx(5,0)
+    //         ,0.0    ,(-ly/zr) ,Spx(5,0)/zr  , (ly+ Spx(5,0)*Spx(5,0))/ly  ,-(Spx(4,0)*Spx(5,0))/ly     ,-Spx(4,0)
+
+    //         ,-(lx/zr) ,0.0    ,Spx(6,0)/zr  , (Spx(6,0)*Spx(7,0))/lx     ,-((lx+Spx(6,0)*Spx(6,0))/lx) , Spx(7,0)
+    //         ,0.0    ,(-ly/zr) ,Spx(7,0)/zr  , (ly+ Spx(7,0)*Spx(7,0))/ly  ,-(Spx(6,0)*Spx(7,0))/ly     ,-Spx(6,0);
+
+    Eigen::MatrixXf J_img(4,6); // jacobiana de imagen de 4 puntos de los objetos (4*2 x 6) matriz de medidas 8x6
     J_img << -(lx/zr) ,0.0    ,Spx(0,0)/zr  , (Spx(0,0)*Spx(1,0))/lx          ,-((lx*lx+Spx(0,0)*Spx(0,0))/lx)  , Spx(1,0)
             ,0.0    ,(-ly/zr) ,Spx(1,0)/zr  , (ly*ly+ (Spx(1,0)*Spx(1,0)))/ly ,-(Spx(0,0)*Spx(1,0))/ly          ,-Spx(0,0)
 
@@ -475,6 +624,9 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
           ,rc(1,0) ,rc(1,1) ,rc(1,2) 
           ,rc(2,0) ,rc(2,1) ,rc(2,2);
             
+    //std::cout<<"Tcb:"<<Tcr<<std::endl;
+    //std::cout<<"Rcb:"<<Rcr<<std::endl;
+
     Eigen::MatrixXf ntc(3,3); //skew symmetric matrix traslation ntc = [0 -z y; z 0 -x; -y x 0] uso la traslacion de RTcb 
 
     ntc <<  0         ,-Tdc(2,0) , Tdc(1,0)
@@ -498,16 +650,38 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
     Eigen::MatrixXf pin_Jimg = J_img.completeOrthogonalDecomposition().pseudoInverse();
     Eigen::MatrixXf pin_Jc_r = Jcam_robot.completeOrthogonalDecomposition().pseudoInverse();
 
+   //q_vel_cam = - pin_Jimg * (Spx - Spxd); // Velocidades de la camara 
 
     ///////////////////////////LEY DE CONTROL SERVO VISUAL
+
+    Eigen::MatrixXf Sptan(8,1);
+    Sptan(0,0) = lambda(0)* tanh((zr/((lx+ly)/2))*(Spx(0,0)-Spxd(0,0))); 
+    Sptan(1,0) = lambda(1)* tanh((zr/((lx+ly)/2))*(Spx(1,0)-Spxd(1,0))); 
+    Sptan(2,0) = lambda(2)* tanh((zr/((lx+ly)/2))*(Spx(2,0)-Spxd(2,0))); 
+    Sptan(3,0) = lambda(3)* tanh((zr/((lx+ly)/2))*(Spx(3,0)-Spxd(3,0))); 
+    Sptan(4,0) = lambda(4)* tanh((zr/((lx+ly)/2))*(Spx(4,0)-Spxd(4,0))); 
+    Sptan(5,0) = lambda(5)* tanh((zr/((lx+ly)/2))*(Spx(5,0)-Spxd(5,0))); 
+    Sptan(6,0) = lambda(6)* tanh((zr/((lx+ly)/2))*(Spx(6,0)-Spxd(6,0))); 
+    Sptan(7,0) = lambda(7)* tanh((zr/((lx+ly)/2))*(Spx(7,0)-Spxd(7,0)));
+
+    Eigen::MatrixXf Sperr(8,1);
+
+    Sperr(0,0) = (Spx(0,0)-Spxd(0,0)); 
+    Sperr(1,0) = (Spx(1,0)-Spxd(1,0)); 
+    Sperr(2,0) = (Spx(2,0)-Spxd(2,0)); 
+    Sperr(3,0) = (Spx(3,0)-Spxd(3,0)); 
+    Sperr(4,0) = (Spx(4,0)-Spxd(4,0)); 
+    Sperr(5,0) = (Spx(5,0)-Spxd(5,0)); 
+    Sperr(6,0) = (Spx(6,0)-Spxd(6,0)); 
+    Sperr(7,0) = (Spx(7,0)-Spxd(7,0)); 
 
     //////////////////// Nueva jacobiana
 
 
     Eigen::MatrixXf J_th_im(2,6);
-    float v1 = x_chough(1,0);
+    float v1 = x_chough(1,0);//;int(imageHeight/2);
     float v2 = x_chough(1,1);
-    float u1 = x_chough(0,0);
+    float u1 = x_chough(0,0);//;int(imageWidth/2);
     float u2 = x_chough(0,1);
     float m = (u2-u1)/(v2-v1);
 
@@ -544,28 +718,31 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
                J_theta_aux(0), J_theta_aux(1), J_theta_aux(2), J_theta_aux(3);
     
 
-    // std::cout<<"***Jacobiana theta***"<<std::endl;
-    // std::cout<<J_theta<<std::endl;
-    // std::cout<<"***Jacobiana r***"<<std::endl;
-    // std::cout<<J_r<<std::endl;
+    std::cout<<"***Jacobiana theta***"<<std::endl;
+    std::cout<<J_theta<<std::endl;
+    std::cout<<"***Jacobiana r***"<<std::endl;
+    std::cout<<J_r<<std::endl;
 
         
 
 
-    // std::cout<<"***Linea Amarilla***"<<std::endl;
-    // std::cout<<"dist_vu: "<<dist_vu<<std::endl;
-    // std::cout<<"angle_lin: "<<angle_lin*180/CV_PI<<std::endl;    
+    std::cout<<"***Linea Amarilla***"<<std::endl;
+    std::cout<<"dist_vu: "<<dist_vu<<std::endl;
+    std::cout<<"angle_lin: "<<angle_lin*180/CV_PI<<std::endl;    
 
-    // std::cout<<"dist_vu_compx: "<<dist_vu_compx<<std::endl;
+    std::cout<<"dist_vu_compx: "<<dist_vu_compx<<std::endl;
 
-    // std::cout<<"r: "<<r<<std::endl;
-    // std::cout<<"ang_theta: "<<ang_theta*180/CV_PI<<std::endl;
-    // std::cout<<"******************"<<std::endl;
+    std::cout<<"r: "<<r<<std::endl;
+    std::cout<<"ang_theta: "<<ang_theta*180/CV_PI<<std::endl;
+    std::cout<<"******************"<<std::endl;
 
     
     /////////////// jacobiana de salida
     Eigen::MatrixXf J_sal(2,6);
     J_sal = J_r * J_theta * Jcam_robot;
+
+    //Eigen::MatrixXf pin_J_sal = J_sal.completeOrthogonalDecomposition().pseudoInverse();
+
 
     Eigen::MatrixXf r_theta(2,1);
     
@@ -586,23 +763,24 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
     // matriz para espacio nulo
     Eigen::MatrixXf gain_null(6,6);
-    gain_null << 10 ,0 ,0 ,0 ,0 ,0
-                ,0 ,10 ,0 ,0 ,0 ,0
-                ,0 ,0 ,10 ,0 ,0 ,0
+    gain_null << 1 ,0 ,0 ,0 ,0 ,0
+                ,0 ,1 ,0 ,0 ,0 ,0
+                ,0 ,0 ,1 ,0 ,0 ,0
                 ,0 ,0 ,0 ,lambda(3,0) ,0 ,0
                 ,0 ,0 ,0 ,0 ,lambda(4,0) ,0
-                ,0 ,0 ,0 ,0 ,0 ,10;
+                ,0 ,0 ,0 ,0 ,0 ,1;
                 
     gain_null = lambda(2,0)*gain_null ;
 
     Eigen::MatrixXf v_null(6,1);
-    v_null << 0.2/(1+r_th_norm.norm()),
+    v_null << 0.5/(1+r_th_norm.norm()),
               0,
               0,
               0,
               0,
               0;    
     
+  //  Eigen::Matrix<double, 6, 6> Iden = Eigen::Matrix<double, 6, 6>::Identity();
     Eigen::MatrixXf Iden(6,6);
     Iden << 1 ,0 ,0 ,0 ,0 ,0
                 ,0 ,1 ,0 ,0 ,0 ,0
@@ -611,6 +789,8 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
                 ,0 ,0 ,0 ,0 ,1 ,0
                 ,0 ,0 ,0 ,0 ,0 ,1;
  
+ 
+
     Eigen::MatrixXf J_sal_trans = J_sal.transpose();
 
     Eigen::MatrixXf in_J_aux = J_sal * gain_null.inverse()* J_sal_trans;
@@ -619,6 +799,18 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
 
     q_vel = in_J_sal * r_theta + (Iden - in_J_sal* J_sal ) * v_null ;  //calculo de velocidades de salida que van al robot solo para el angulo theta
+    //q_vel = in_J_sal * r_theta;
+    
+    // std::cout<<"Norma error: "<<(zr/((lx+ly)/2))*Sperr.norm()<<std::endl;
+    // std::cout<<"thetha_p: "<<theta_p<<std::endl;
+    
+
+    //lambda(0)+2.0/(1+(zr/((lx+ly)/2))*Sperr.norm())    0.0/(1+(zr/((lx+ly)/2))*Sperr.norm()),
+    
+
+   // q_vel =  - pin_Jc_r * (Spx - Spxd);  //calculo de velocidades de salida que van al robot 
+
+   // q_vel =  - pin_Jc_r * (Sptan);  //calculo de velocidades de salida que van al robot 
 
     //// nueva jacobiana aumentada
     Eigen::MatrixXf J_aux(2,2);
@@ -638,12 +830,23 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
     Eigen::MatrixXf pin_J_th_im = J_th_im.completeOrthogonalDecomposition().pseudoInverse();
 
+
+    // Eigen::MatrixXf pin_J_aumen = J_aumen.completeOrthogonalDecomposition().pseudoInverse();
+    // Eigen::MatrixXf x_p (5,1) ;
+    // x_p << Sptan(0,0), Sptan(1,0), Sptan(2,0), Sptan(3,0), theta_p(0,0);     
+    // q_vel = -pin_J_aumen * x_p;
+
+
     Eigen::MatrixXf theta_p(2,1);
     
     theta_p << lambda(0,0)* (dist_vu_compx - 0.0), 
                lambda(1,0)* (angle_lin - 0.0);
-        
-   
+               
+    // q_vel =  - pin_J_th_im * theta_p;  //calculo de velocidades de salida que van al robot solo para el angulo theta
+
+    //q_vel << q_vel(0,0), q_vel(1,0),q_vel(2,0),
+           //  q_vel(3,0), q_vel(4,0) ,q_vel(5,0); // ganancias apra velocidades de salida
+
   sensor_msgs::ImagePtr image_msg;
   image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
   image_msg->header.stamp  = in_depth->header.stamp;
@@ -653,8 +856,10 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
 
   //////////// Envio de resultados de velocidades al topic de odometria 
 
-  geometry_msgs::Twist twist_msg;  
+  geometry_msgs::Twist twist_msg;
+  
   std::cout<< "velocidades : "<<std::endl<<q_vel<<std::endl;
+
 
   if (!control_ok)
     q_vel << 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0 ;
@@ -666,6 +871,7 @@ void callback(const ImageConstPtr& in_depth, const OdometryConstPtr& odom_msg)
   twist_msg.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
   twist_msg.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
   twist_msg.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
+
 
   twist_pub.publish(twist_msg);
   
@@ -705,8 +911,6 @@ int main(int argc, char** argv)
   nh.getParam("/control_ok", control_ok);
   nh.getParam("/angle_desired", angle_desired);
 
-  nh.getParam("/publish_vel_topic", vel_topic);
-
     
   XmlRpc::XmlRpcValue param;
 
@@ -739,20 +943,19 @@ int main(int argc, char** argv)
   //lambda <<  (double)param[0], (double)param[1], (double)param[2], (double)param[3], (double)param[4];
   
   //message_filters::Subscriber<Image>  rgbCam_sub (nh, imgTopic, 5);
-  message_filters::Subscriber<Image>  depthCam_sub(nh, depthTopic, 5);
-  message_filters::Subscriber<Odometry>     odom_robot(nh, odom_dron, 5);
+  //message_filters::Subscriber<Image>  depthCam_sub(nh, depthTopic, 5);
+  //message_filters::Subscriber<Odometry>     odom_robot(nh, odom_dron, 5);
 
-  typedef sync_policies::ApproximateTime<Image, Odometry> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), depthCam_sub, odom_robot);
-  sync.registerCallback(boost::bind(&callback, _1, _2));
+  //typedef sync_policies::ApproximateTime<Image, Odometry> MySyncPolicy;
+  //Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), depthCam_sub, odom_robot);
+  //sync.registerCallback(boost::bind(&callback, _1, _2));
 
 
-  //ros::Subscriber sub = nh.subscribe<Image>(depthTopic, 10, callback);
+  ros::Subscriber sub = nh.subscribe<Image>(depthTopic, 10, callback);
 
   featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/imgFeatures", 10);
   //featurespcl_pub= nh.advertise<pcl::PointCloud<pcl::PointXYZ>> ("/pcl_features", 10);
-  //twist_pub = nh.advertise<geometry_msgs::Twist>("/m100/velocityControl", 10);
-  twist_pub = nh.advertise<geometry_msgs::Twist>(vel_topic, 10);
+  twist_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 10);
   
  
   ros::spin();
