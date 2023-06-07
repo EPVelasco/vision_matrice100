@@ -79,7 +79,7 @@ Eigen::MatrixXf q_vel_cam(6,1) ; // velocidades del control servovisual
 ///////////////////////////////////////callback
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
-  auto t1 = Clock::now();
+  // auto t1 = Clock::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
       try
@@ -94,7 +94,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
   // // Acceder a los datos del mensaje de Odometry
   const double z_dron = odom_msg->pose.pose.position.z;
-  std::cout<<"z_dron: "<<std::endl;
+  // std::cout<<"z_dron: "<<std::endl;
 
   //cv::Mat img_rgbCam    = cv_rgbCam->image;
   cv::Mat mask_img  = cv_maskImg->image;
@@ -118,7 +118,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   // Dibujar las líneas aproximadas en la imagen original
   cv::Mat resultImage;
   cv::cvtColor(mask_img, resultImage, cv::COLOR_GRAY2BGR);
-  float ang1 = 0 ,ang2 = 0, x11 = 0, x12 = 0, y11 =0 , y12 =0, x21 = 0, x22 = 0, y21 =0 , y22 =0 , vyl1 = 0, vyl2 = 0,  yl1 = 0, yl2 = 0;
+  float ang1 = 0 ,ang2 = 0, x11 = 0, x12 = 0, y11 =0 , y12 =0, x21 = 0, x22 = 0, y21 =0 , y22 =0;// vyl1 = 0, vyl2 = 0,  yl1 = 0, yl2 = 0;
   float ang_ori1 = 0, ang_ori2 = 0;
   bool flag_lin1 = false, flag_lin2 = false;
   for (const auto& line : linesap) {
@@ -140,15 +140,15 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
         y12 = pt2.y; 
         ang1 = std::atan2(y12-y11, x12-x11) * 180 / CV_PI;
         ang_ori1 = ang1;
-        vyl1 = vy;
-        yl1 =y;
+       // vyl1 = vy;
+       // yl1 =y;
 
         if (vy>0){
           ang1 = ang1-180;
           
         }
         ang_ori1 = ang1;
-        std::cout<<"Line1: "<<line[0]<<", "<<line[1]<<", "<<line[2]<<", "<<line[3]<<std::endl;  
+       // std::cout<<"Line1: "<<line[0]<<", "<<line[1]<<", "<<line[2]<<", "<<line[3]<<std::endl;  
         flag_lin1 = true;    
       }
       else{
@@ -158,8 +158,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
         y21 = pt1.y; 
         x22 = pt2.x;
         y22 = pt2.y; 
-        vyl2 = vy;
-        yl2 = y;
+       // vyl2 = vy;
+       // yl2 = y;
 
         ang2 = std::atan2(y22-y21, x22-x21) * 180 / CV_PI;
 
@@ -169,12 +169,12 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
         ang_ori2 = ang2;
 
       }
-      std::cout<<"Line2: "<<line[0]<<", "<<line[1]<<", "<<line[2]<<", "<<line[3]<<std::endl;
+     // std::cout<<"Line2: "<<line[0]<<", "<<line[1]<<", "<<line[2]<<", "<<line[3]<<std::endl;
       flag_lin2 = true;    
 
   }
 
-  std::cout<<"vyl2: "<<vyl1<<" vyl2:"<<vyl2<<" yl1: "<<yl1<<" yl2:"<<yl2<<std::endl;
+ // std::cout<<"vyl2: "<<vyl1<<" vyl2:"<<vyl2<<" yl1: "<<yl1<<" yl2:"<<yl2<<std::endl;
 
   int xc = (x12+x11+x22+x21)/4;
   int yc = int(imageHeight/2);
@@ -239,7 +239,6 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   //     median = depthValues[n / 2];
   // double pixel_factor = 1000000.0/median;
   double pixel_factor = 50.0;
-
 
   // puntos verticales
   float pv1_tx = (xc + pixel_factor*cos(ang_t-CV_PI/2));
@@ -315,18 +314,17 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   cv::Point pv1(pv1_tx, pv1_ty);
   cv::Point pv2(pv2_tx, pv2_ty);
 
-   cv::circle(resultImage, pv1, 3, cv::Scalar(0, 0, 255), 3);
-   cv::circle(resultImage, pv2, 3, cv::Scalar(255, 0, 0),3);
-
+  cv::circle(resultImage, pv1, 3, cv::Scalar(0, 0, 255), 3);
+  cv::circle(resultImage, pv2, 3, cv::Scalar(255, 0, 0),3);
 
   // calculo de angulo solo para verificar
   // float angle_pixel = std::atan2(pt2_pl.x-pt1_pl.x,pt2_pl.y-pt1_pl.y);
   // std::cout<<"angt: "<<ang_t<<" angle_pixel: "<<angle_pixel<<std::endl;
   
   // sistema de coordenas
-   cv::circle(resultImage, center, 3, cv::Scalar(255, 0, 0), 3);
-   cv::line(resultImage, center,cv::Point(center.x+40,center.y), cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
-   cv::line(resultImage, center,cv::Point(center.x,center.y+40), cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+  cv::circle(resultImage, center, 3, cv::Scalar(255, 0, 0), 3);
+  cv::line(resultImage, center,cv::Point(center.x+40,center.y), cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+  cv::line(resultImage, center,cv::Point(center.x,center.y+40), cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
   /// Distancia perpendicular 
 
 
@@ -469,9 +467,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     // std::cout<<"***Jacobiana theta***"<<std::endl;
     // std::cout<<J_theta<<std::endl;
     // std::cout<<"***Jacobiana r***"<<std::endl;
-    // std::cout<<J_r<<std::endl;
-
-        
+    // std::cout<<J_r<<std::endl;       
 
 
     // std::cout<<"***Linea Amarilla***"<<std::endl;
@@ -501,9 +497,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
                  lambda(1,0)* (angle_desired - ang_theta );
       
 
-    std::cout<<"Error norma: "<<r_th_norm.norm()<<std::endl;
-    std::cout<<"Errores: "<<r_th_norm<<std::endl;
-               
+    // std::cout<<"Error norma: "<<r_th_norm.norm()<<std::endl;
+    // std::cout<<"Errores: "<<r_th_norm<<std::endl;             
    
 
     // matriz para espacio nulo
@@ -547,8 +542,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     J_aux << sin(angle_lin) , dist_vu*cos(angle_lin),
               0,                1;
 
-
-      //sin(angle_lin) , dist_vu*cos(angle_lin),
+    //sin(angle_lin) , dist_vu*cos(angle_lin),
 
     Eigen::MatrixXf J_aux2(2,4);
 
@@ -576,9 +570,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   //////////// Envio de resultados de velocidades al topic de odometria 
 
   geometry_msgs::Twist twist_msg;  
-  std::cout<< "velocidades : "<<std::endl<<q_vel<<std::endl;
 
-  if (!control_ok)
+  if (!control_ok || xc ==0)
     q_vel << 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0 ;
   
   // Configurar las velocidades en el mensaje Twist
@@ -589,10 +582,12 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   twist_msg.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
   twist_msg.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
 
+  std::cout<< "velocidades : "<<std::endl<<q_vel<<std::endl;
+
   twist_pub.publish(twist_msg);
   
-  auto t2= Clock::now();
-  std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
+  // auto t2= Clock::now();
+  // std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 
 }
 
