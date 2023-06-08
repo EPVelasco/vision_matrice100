@@ -48,13 +48,15 @@ using namespace nav_msgs;
 ros::Publisher featuresRGB_pub;   // features in RGB image
 ros::Publisher featurespcl_pub;   // features in pcl
 ros::Publisher path_pub;          // path coordinates 
-ros::Publisher twist_pub;         // velocidades
+ros::Publisher veldroneWorld_pub; // velocidades dron- munod
+ros::Publisher veldrone_pub;      // velocidades dron
 
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
 std::string depthTopic = "/camera/aligned_depth_to_color/image_raw";
 std::string odom_dron  = "/dji_sdk/odometry";
-std::string vel_topic = "/m100/velocityControl";
+std::string vel_drone_world_topic = "/dji_sdk/visual_servoing/vel/drone_world";
+std::string vel_drone_topic = "/dji_sdk/visual_servoing/vel/drone";
 
 bool control_ok = true;
 
@@ -73,7 +75,7 @@ Eigen::MatrixXf Spxd(8,1);   // 4 puntos x,y en pixeles que la deteccion de los 
 Eigen::MatrixXf lambda(8,1);  // ganancias seleccionadas en el control
 
 Eigen::MatrixXf q_vel(6,1) ; // velocidades del control servovisual
-Eigen::MatrixXf q_vel_cam(6,1) ; // velocidades del control servovisual
+Eigen::MatrixXf q_vel_dw(6,1) ; // velocidades del control servovisual
 
 
 ///////////////////////////////////////callback
@@ -92,10 +94,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
         return;
       }
 
-  // // Acceder a los datos del mensaje de Odometry
-  const double z_dron = odom_msg->pose.pose.position.z;
-  // std::cout<<"z_dron: "<<std::endl;
-
+  
   //cv::Mat img_rgbCam    = cv_rgbCam->image;
   cv::Mat mask_img  = cv_maskImg->image;
 
@@ -569,22 +568,60 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
   //////////// Envio de resultados de velocidades al topic de odometria 
 
-  geometry_msgs::Twist twist_msg;  
-
   if (!control_ok || xc ==0)
     q_vel << 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0 ;
+
+
+
   
-  // Configurar las velocidades en el mensaje Twist
-  twist_msg.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
-  twist_msg.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
-  twist_msg.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
-  twist_msg.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
-  twist_msg.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
-  twist_msg.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
+  ////////////// conversion velocidades dron mundo
+  
+  double x_q = odom_msg->pose.pose.orientation.x;
+  double y_q = odom_msg->pose.pose.orientation.y;
+  double z_q = odom_msg->pose.pose.orientation.z;
+  double w_q = odom_msg->pose.pose.orientation.w;
 
-  std::cout<< "velocidades : "<<std::endl<<q_vel<<std::endl;
 
-  twist_pub.publish(twist_msg);
+  Eigen::Quaterniond quaternion(w_q, x_q, y_q, z_q); // w, x, y, z
+  Eigen::Matrix3d RdW = quaternion.toRotationMatrix();
+
+  Eigen::MatrixXf d_W(6,6);
+
+  d_W << RdW(0,0) ,RdW(0,1) ,RdW(0,2) ,0.0      ,0.0      ,0.0
+        ,RdW(1,0) ,RdW(1,1) ,RdW(1,2) ,0.0      ,0.0      ,0.0
+        ,RdW(2,0) ,RdW(2,1) ,RdW(2,2) ,0.0      ,0.0      ,0.0
+        ,0.0      ,0.0      ,0.0      ,RdW(0,0)   ,RdW(0,1)   ,RdW(0,2)
+        ,0.0      ,0.0      ,0.0      ,RdW(1,0)   ,RdW(1,1)   ,RdW(1,2) 
+        ,0.0      ,0.0      ,0.0      ,RdW(2,0)   ,RdW(2,1)   ,RdW(2,2);
+
+  q_vel_dw = d_W * q_vel;
+
+  
+  // Velocidades del cuerpo
+  geometry_msgs::Twist velCuerpo_msgs;
+  velCuerpo_msgs.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
+  velCuerpo_msgs.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
+  velCuerpo_msgs.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
+  velCuerpo_msgs.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
+  velCuerpo_msgs.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
+  velCuerpo_msgs.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
+
+  std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
+
+  veldrone_pub.publish(velCuerpo_msgs);
+
+  // velocidades del dron con respecto al mundo
+  geometry_msgs::Twist velCuerpoMundo_msgs;  
+  velCuerpoMundo_msgs.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
+  velCuerpoMundo_msgs.linear.y =  q_vel_dw(1,0);    // Velocidad lineal en el eje y
+  velCuerpoMundo_msgs.linear.z =  q_vel_dw(2,0);    // Velocidad lineal en el eje z
+  velCuerpoMundo_msgs.angular.x = q_vel_dw(3,0);   // Velocidad angular en el eje x
+  velCuerpoMundo_msgs.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
+  velCuerpoMundo_msgs.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
+
+  std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
+
+  veldroneWorld_pub.publish(velCuerpoMundo_msgs);
   
   // auto t2= Clock::now();
   // std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
@@ -602,7 +639,7 @@ int main(int argc, char** argv)
   std::cout<<"Features Node initialized... :)";
 
   nh.getParam("/imgTopic", imgTopic);
-  nh.getParam("/depthTopic", depthTopic);
+  //nh.getParam("/depthTopic", depthTopic);
   nh.getParam("/odom_dron", odom_dron);
 
   nh.getParam("/rho", rho_hough);
@@ -612,7 +649,8 @@ int main(int argc, char** argv)
   nh.getParam("/control_ok", control_ok);
   nh.getParam("/angle_desired", angle_desired);
 
-  nh.getParam("/publish_vel_topic", vel_topic);
+  nh.getParam("/publish_vel_drone_topic", vel_drone_topic);
+  nh.getParam("/publish_vel_drone_world_topic", vel_drone_world_topic);
 
     
   XmlRpc::XmlRpcValue param;
@@ -644,15 +682,16 @@ int main(int argc, char** argv)
   // ganacias del control cineamtico
   lambda <<  (double)param[0], (double)param[1], (double)param[2], (double)param[3], (double)param[4], (double)param[5], (double)param[6], (double)param[7];
 
-  message_filters::Subscriber<Image>    depthCam_sub(nh, depthTopic, 5);
+  message_filters::Subscriber<Image>    depthCam_sub(nh, imgTopic, 5);
   message_filters::Subscriber<Odometry> odom_robot(nh, odom_dron, 5);
 
   typedef sync_policies::ApproximateTime<Image, Odometry> MySyncPolicy;
   Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), depthCam_sub, odom_robot);
   sync.registerCallback(boost::bind(&callback, _1, _2));
 
-  featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/imgFeatures", 10);
-  twist_pub = nh.advertise<geometry_msgs::Twist>(vel_topic, 10);
+  featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/dji_sdk/visual_servoing/img_features", 10);
+  veldrone_pub = nh.advertise<geometry_msgs::Twist>(vel_drone_topic, 10);
+  veldroneWorld_pub = nh.advertise<geometry_msgs::Twist>(vel_drone_world_topic, 10);
    
   ros::spin();
 

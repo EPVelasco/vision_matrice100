@@ -35,6 +35,7 @@ float maxLineGap = 10;
 float minCan = 20;
 float maxCan = 50;
 float ang_t = 0;
+float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 
 void callback(const ImageConstPtr& in_image)
 {
@@ -101,8 +102,9 @@ void callback(const ImageConstPtr& in_image)
   cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
   
   // Definir el umbral de área para filtrar los contornos
-  double areaThreshold = 800.0; // Ajusta el umbral de área según tus necesidades
+ // double areaThreshold = 800.0; // Ajusta el umbral de área según tus necesidades
 
+  double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
   // Crear una imagen de salida para mostrar los contornos filtrados
   cv::Mat outputImage = cv::Mat::zeros(binaryImage.size(), CV_8UC3);
 
@@ -257,11 +259,11 @@ int main(int argc, char** argv)
   nh.getParam("/minCan", minCan);
   nh.getParam("/maxCan", maxCan);
   nh.getParam("/imgTopic", imgTopic);
+  nh.getParam("/area_filter", area_filter); 
   
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
 
-  nh.getParam("/imgTopic", imgTopic);
   ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 10, callback);
   panelFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
   ros::spin();

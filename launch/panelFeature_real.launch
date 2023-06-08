@@ -1,14 +1,13 @@
 <?xml version="1.0"?>
 <launch>
 
-	<param name="rho"        type="double" value="1.0" />
-	<param name="theta"      type="double" value="0.017452778" />
-    <param name="threshold"  type="double" value="100.0" />
-    <param name="minLineLen" type="double" value="100.0" />
-    <param name="maxLineGap" type="double" value="10.0" />
+	<param name="rho"         type="double" value="1.0" />
+	<param name="theta"       type="double" value="0.017452778" />
+    <param name="threshold"   type="double" value="100.0" />
+    <param name="minLineLen"  type="double" value="100.0" />
+    <param name="maxLineGap"  type="double" value="10.0" />
 
-    <!-- <param name="minCan"     type="double" value="250" />
-    <param name="maxCan"     type="double" value="255" /> -->
+    <param name="area_filter" type="double" value="800.0" />
 
     <param name="imgTopic"   type="str" value="/camera/color/image_raw"/>
 

@@ -18,7 +18,7 @@
 
     <!-- ............................... params ........................................ -->
     <group ns="vision_params">
-        <rosparam file="$(find vision_matrice100)/cfg/cfg_params_real.yaml" /> 
+        <rosparam file="$(find vision_matrice100)/cfg/cfg_params_sim.yaml" /> 
     </group>
     
    <node pkg="vision_matrice100" type="vs_sn_node" name="vs_sn_node" output="screen"/>
