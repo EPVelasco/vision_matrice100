@@ -81,7 +81,7 @@ Eigen::MatrixXf q_vel_dw(6,1) ; // velocidades del control servovisual
 ///////////////////////////////////////callback
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
-  // auto t1 = Clock::now();
+   auto t1 = Clock::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
       try
@@ -623,8 +623,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
   veldroneWorld_pub.publish(velCuerpoMundo_msgs);
   
-  // auto t2= Clock::now();
-  // std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
+  auto t2= Clock::now();
+  std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 
 }
 

@@ -39,6 +39,7 @@ float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifi
 
 void callback(const ImageConstPtr& in_image)
 {
+  auto t1 = Clock::now();
 
   cv_bridge::CvImagePtr cv_rgbCam;
       try
@@ -243,6 +244,9 @@ void callback(const ImageConstPtr& in_image)
   image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
   image_msg->header = in_image->header;
   panelFeatures_pub.publish(image_msg);  
+
+  auto t2= Clock::now();
+  std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 }
 
 int main(int argc, char** argv)
