@@ -81,7 +81,7 @@ Eigen::MatrixXf q_vel_dw(6,1) ; // velocidades del control servovisual
 ///////////////////////////////////////callback
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
-   auto t1 = Clock::now();
+  auto t1 = Clock::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
       try
@@ -355,13 +355,13 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
              1, 1;
   x_chough = pin_Hc *   x_hough; // punto de hough  ya normalizado desde el centro de la iamgen  
 
-  std::cout<<"x_chough: "<<x_chough<<std::endl;
+  // std::cout<<"x_chough: "<<x_chough<<std::endl;
   float ang_chough = std::atan2 (x_chough(1,0),x_chough(0,0));
-  std::cout<<"x_chough_angulo grados: "<<ang_chough*180/CV_PI<<std::endl;
-  std::cout<<"x_chough_angulo radianes: "<<ang_chough<<std::endl;
+  // std::cout<<"x_chough_angulo grados: "<<ang_chough*180/CV_PI<<std::endl;
+  // std::cout<<"x_chough_angulo radianes: "<<ang_chough<<std::endl;
   float dist_choug = sqrt(pow(x_chough(0,0),2)+pow(x_chough(1,0),2));
-  std::cout<<"x_chough_dist: "<<dist_choug<<std::endl;
-  std::cout<<"x_chough_dist_comp_X: "<<dist_choug*cos(ang_chough)<<std::endl;
+  // std::cout<<"x_chough_dist: "<<dist_choug<<std::endl;
+  // std::cout<<"x_chough_dist_comp_X: "<<dist_choug*cos(ang_chough)<<std::endl;
 
   /////////////////////////////////////////////////////////////////////
   Eigen::MatrixXf Spx(4,1);   // 4 puntos x,y en pixeles que la deteccion de los paneles puntos acutales
@@ -606,7 +606,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   velCuerpo_msgs.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
   velCuerpo_msgs.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
 
-  std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
+  // std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
 
   veldrone_pub.publish(velCuerpo_msgs);
 
@@ -619,7 +619,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   velCuerpoMundo_msgs.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
   velCuerpoMundo_msgs.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
 
-  std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
+  // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
 
   veldroneWorld_pub.publish(velCuerpoMundo_msgs);
   

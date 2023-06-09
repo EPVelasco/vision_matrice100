@@ -37,6 +37,30 @@ float maxCan = 50;
 float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 
+
+cv::Mat thinning(const cv::Mat& input)
+{
+    cv::Mat skel(input.size(), CV_8UC1, cv::Scalar(0));
+    cv::Mat temp;
+    cv::Mat eroded;
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
+
+    bool done;
+    do {
+        cv::erode(input, eroded, element);
+        cv::dilate(eroded, temp, element);
+        cv::subtract(input, temp, temp);
+        cv::bitwise_or(skel, temp, skel);
+        eroded.copyTo(input);
+
+        done = (cv::countNonZero(input) == 0);
+    } while (!done);
+
+    return skel;
+}
+
+
 void callback(const ImageConstPtr& in_image)
 {
   auto t1 = Clock::now();
@@ -100,10 +124,12 @@ void callback(const ImageConstPtr& in_image)
 
   // Buscar los contornos en la imagen binaria
   std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-  
+  cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
   // Definir el umbral de área para filtrar los contornos
  // double areaThreshold = 800.0; // Ajusta el umbral de área según tus necesidades
+
+  auto t2= Clock::now();
+  std::cout<<"time find contotours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 
   double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
   // Crear una imagen de salida para mostrar los contornos filtrados
@@ -117,12 +143,20 @@ void callback(const ImageConstPtr& in_image)
       {
           // Dibujar los contornos filtrados en la imagen de salida
           cv::Scalar color(255, 255, 255); // Color verde
-          cv::drawContours(outputImage, contours, static_cast<int>(i), color, 2);
+          cv::drawContours(outputImage, contours, static_cast<int>(i), color, 2) ;
       }
   }
 
+
+  auto t3= Clock::now();
+  std::cout<<"time filtrado areas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
+
+
   cv::Mat gray_image_filter;
   cv::cvtColor(outputImage, gray_image_filter, CV_BGR2GRAY);  
+
+
+  //cv::Mat skel = thinning(gray_image_filter);
 
   // Definir el elemento estructurante para la operación de cierre
   cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5)); // Ajusta el tamaño del kernel según tus necesidades
@@ -131,10 +165,25 @@ void callback(const ImageConstPtr& in_image)
   cv::Mat closedImage;
   cv::morphologyEx(gray_image_filter, closedImage, cv::MORPH_CLOSE, kernel);
 
-  cv::Mat filtered_image = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
+  // // Definir la región de interés en la mitad inferior de la imagen
+  // cv::Rect roi(0, 0, imageWidth, imageHeight / 2);
+  // // Rellenar la región de interés con ceros
+  // gray_image_filter(roi) = 0;
+
+  // Redimensionar la imagen
+  cv::Size nuevoTamano(imageWidth/2, imageHeight/8);
+  cv::Mat imagenRedimensionada;
+  cv::resize(gray_image_filter, imagenRedimensionada, nuevoTamano);
+
+  // Binarizar la imagen
+  cv::threshold(imagenRedimensionada, imagenRedimensionada, 0, 255, cv::THRESH_BINARY);
+
+
+
+  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth/2, CV_8UC1);
 
   std::vector<cv::Vec4i> lines;
-  cv::HoughLinesP(closedImage, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
+  cv::HoughLinesP(imagenRedimensionada, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
 
   // float xc = 0 , yc = 0;
   cv::Vec4i lin_group1(0, 0, 0, 0);
@@ -142,13 +191,17 @@ void callback(const ImageConstPtr& in_image)
   int contleft = 0;
   int contrigth = 0;
 
+  auto t4= Clock::now();
+  std::cout<<"time hough lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count()/1000000.0<<std::endl;
+
+
   for (size_t i = 0; i < lines.size(); i++) {
         cv::Vec4i line = lines[i];
         float angle = std::atan2(line[3] - line[1], line[2] - line[0]) * 180 / CV_PI;
       if (std::abs(angle) < 120 && std::abs(angle) > 60 ) {
         //cv::line(filtered_image, cv::Point(line[0], line[1]), cv::Point(line[2], line[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
-        if((line[0]<imageWidth/2 and line[2]<imageWidth/2)) {
+        if((line[0]<imagenRedimensionada.cols/2 and line[2]<imagenRedimensionada.cols/2)) {
 
           lin_group1[0] = line[0] + lin_group1[0];
           lin_group1[1] = line[1] + lin_group1[1];
@@ -166,6 +219,10 @@ void callback(const ImageConstPtr& in_image)
         }
     }
   }
+
+  auto t5= Clock::now();
+  std::cout<<"time bests lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count()/1000000.0<<std::endl;
+
 
   // promedio de las lineas
 
@@ -205,8 +262,12 @@ void callback(const ImageConstPtr& in_image)
   else{
     // xc = 0;
     // yc = 0;
-    std::cout<<"[ERROR en deteccion de panel]: no hay suficientes lineas"<<std::endl;
+    std::cout<<"[ERROR en deteccion de panel]: no hay suficientes lineas para deteccion"<<std::endl;
   }
+
+  auto t6= Clock::now();
+  std::cout<<"not plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t6-t5).count()/1000000.0<<std::endl;
+
 
   cv::Mat resultImage;
   cv::cvtColor(filtered_image, resultImage, cv::COLOR_GRAY2BGR);
@@ -214,11 +275,27 @@ void callback(const ImageConstPtr& in_image)
   cv::line(resultImage, cv::Point(lin_group1[0], lin_group1[1]), cv::Point(lin_group1[2], lin_group1[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
   cv::line(resultImage, cv::Point(lin_group2[0], lin_group2[1]), cv::Point(lin_group2[2], lin_group2[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
-  cv::Mat mono_resultImage;
-  cv::cvtColor(resultImage, mono_resultImage, cv::COLOR_BGR2GRAY);
+
+  // Redimensionar la imagen
+  cv::Size resIm(imageHeight, imageWidth);
+  cv::Mat imagen_reestablecida;
+  cv::resize(resultImage, imagen_reestablecida, resIm);
+
+    // Binarizar la imagen
+  cv::threshold(imagen_reestablecida, imagen_reestablecida, 0, 255, cv::THRESH_BINARY);
+
+  cv::Mat mono_img_result;
+  cv::cvtColor(imagen_reestablecida, mono_img_result, cv::COLOR_BGR2GRAY);
+
+  cv::Mat mono_resultImage = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
+
 
   std::vector<std::vector<cv::Point>> contours_2;
-  cv::findContours(mono_resultImage, contours_2, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+  cv::findContours(mono_img_result, contours_2, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+  auto t7= Clock::now();
+  std::cout<<"plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t7-t6).count()/1000000.0<<std::endl;
+
 
   std::vector<cv::Vec4f> linesap;
   for (const auto& contour : contours_2) {
@@ -239,14 +316,22 @@ void callback(const ImageConstPtr& in_image)
       cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
       cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
    }
+
+  auto t8= Clock::now();
+  std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
+
   
   sensor_msgs::ImagePtr image_msg;
   image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
   image_msg->header = in_image->header;
   panelFeatures_pub.publish(image_msg);  
 
-  auto t2= Clock::now();
-  std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
+  auto t9= Clock::now();
+  std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
+
+  auto t10= Clock::now();
+  std::cout<<"time total: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;
+
 }
 
 int main(int argc, char** argv)
