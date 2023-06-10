@@ -254,41 +254,41 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   cv::line(line_path_img, cv::Point(pv1_tx, pv1_ty), cv::Point(pv2_tx, pv2_ty), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
   
-  std::vector<cv::Vec2f> lineas;
-  cv::HoughLines(line_path_img, lineas, rho_hough, theta, threshold);
+  // std::vector<cv::Vec2f> lineas;
+  // cv::HoughLines(line_path_img, lineas, rho_hough, theta, threshold);
 
-  double x0 = 0;
-  double y0 = 0;
-  float theta_hou =0;
-  for (size_t i = 0; i < lineas.size(); i++) {
-      float rho = lineas[i][0];
-      theta_hou = lineas[i][1];
+  // double x0 = 0;
+  // double y0 = 0;
+  // float theta_hou =0;
+  // for (size_t i = 0; i < lineas.size(); i++) {
+  //     float rho = lineas[i][0];
+  //     theta_hou = lineas[i][1];
 
-      if (rho<0)
-        theta_hou -=CV_PI;
-      rho = abs(rho);
+  //     if (rho<0)
+  //       theta_hou -=CV_PI;
+  //     rho = abs(rho);
 
-      double a = std::cos(theta_hou);
-      double b = std::sin(theta_hou);
+  //     double a = std::cos(theta_hou);
+  //     double b = std::sin(theta_hou);
 
-      x0 = a * (rho);
-      y0 = b * (rho);  
+  //     x0 = a * (rho);
+  //     y0 = b * (rho);  
 
-      cv::Point pt1(cvRound(x0 + 1000 * (-b)), cvRound(y0 + 1000 * a));
-      cv::Point pt2(cvRound(x0 - 1000 * (-b)), cvRound(y0 - 1000 * a));
+  //     cv::Point pt1(cvRound(x0 + 1000 * (-b)), cvRound(y0 + 1000 * a));
+  //     cv::Point pt2(cvRound(x0 - 1000 * (-b)), cvRound(y0 - 1000 * a));
 
-      //cv::line(resultImage, pt1, pt2, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
-    //  cv::circle(resultImage, cv::Point(x0,y0), 3, cv::Scalar(255, 255, 0),-1); 
-      //cv::line(resultImage, cv::Point(0,0), cv::Point(x0,y0), cv::Scalar(255,0,  255), 1, cv::LINE_AA);
+  //     //cv::line(resultImage, pt1, pt2, cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+  //   //  cv::circle(resultImage, cv::Point(x0,y0), 3, cv::Scalar(255, 255, 0),-1); 
+  //     //cv::line(resultImage, cv::Point(0,0), cv::Point(x0,y0), cv::Scalar(255,0,  255), 1, cv::LINE_AA);
 
-     // cv::line(resultImage, center,cv::Point(x0,y0), cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+  //    // cv::line(resultImage, center,cv::Point(x0,y0), cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
 
-      // std::cout<<"Lineas con Hough: "<<pt1<<", "<<pt2<<std::endl;
-      // std::cout<<"rho: "<<rho<<std::endl;
-      // std::cout<<"theta: "<<(theta_hou*180/CV_PI)<<std::endl;
-      // std::cout<<"x0: "<<x0<<"y0: "<<y0<<std::endl;
-       // solo va a detectar la primera linea, ya que solo hice una linea con dos puntos, no necesito aproximar mas rectas
-  }
+  //     // std::cout<<"Lineas con Hough: "<<pt1<<", "<<pt2<<std::endl;
+  //     // std::cout<<"rho: "<<rho<<std::endl;
+  //     // std::cout<<"theta: "<<(theta_hou*180/CV_PI)<<std::endl;
+  //     // std::cout<<"x0: "<<x0<<"y0: "<<y0<<std::endl;
+  //      // solo va a detectar la primera linea, ya que solo hice una linea con dos puntos, no necesito aproximar mas rectas
+  // }
 
   
 
@@ -356,10 +356,10 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   x_chough = pin_Hc *   x_hough; // punto de hough  ya normalizado desde el centro de la iamgen  
 
   // std::cout<<"x_chough: "<<x_chough<<std::endl;
-  float ang_chough = std::atan2 (x_chough(1,0),x_chough(0,0));
+  // float ang_chough = std::atan2 (x_chough(1,0),x_chough(0,0));
   // std::cout<<"x_chough_angulo grados: "<<ang_chough*180/CV_PI<<std::endl;
   // std::cout<<"x_chough_angulo radianes: "<<ang_chough<<std::endl;
-  float dist_choug = sqrt(pow(x_chough(0,0),2)+pow(x_chough(1,0),2));
+  // float dist_choug = sqrt(pow(x_chough(0,0),2)+pow(x_chough(1,0),2));
   // std::cout<<"x_chough_dist: "<<dist_choug<<std::endl;
   // std::cout<<"x_chough_dist_comp_X: "<<dist_choug*cos(ang_chough)<<std::endl;
 
