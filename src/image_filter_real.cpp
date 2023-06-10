@@ -195,7 +195,7 @@ void callback(const ImageConstPtr& in_image)
   // gray_image_filter(roi) = 0;
 
   // Redimensionar la imagen
-  cv::Size nuevoTamano(imageWidth/4, imageHeight/4);
+  cv::Size nuevoTamano(imageWidth/8, imageHeight/8);
   cv::Mat imagenRedimensionada;
   cv::resize(gray_image_filter, imagenRedimensionada, nuevoTamano);
 
@@ -204,7 +204,7 @@ void callback(const ImageConstPtr& in_image)
 
 
 
-  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/4, imageWidth/4, CV_8UC1);
+  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth/8, CV_8UC1);
 
   std::vector<cv::Vec4i> lines;
   cv::HoughLinesP(imagenRedimensionada, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
