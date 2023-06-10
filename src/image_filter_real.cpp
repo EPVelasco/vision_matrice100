@@ -204,7 +204,7 @@ void callback(const ImageConstPtr& in_image)
   // gray_image_filter(roi) = 0;
 
   // Redimensionar la imagen
-  cv::Size nuevoTamano(imageWidth/8, imageHeight/8);
+  cv::Size nuevoTamano(imageWidth/4, imageHeight/4);
   cv::Mat imagenRedimensionada;
   cv::resize(gray_image_filter, imagenRedimensionada, nuevoTamano);
 
@@ -213,7 +213,7 @@ void callback(const ImageConstPtr& in_image)
 
 
 
-  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth/8, CV_8UC1);
+  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/4, imageWidth/4, CV_8UC1);
 
   std::vector<cv::Vec4i> lines;
   cv::HoughLinesP(imagenRedimensionada, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
@@ -405,10 +405,10 @@ int main(int argc, char** argv)
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
 
-  ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 1, callback);
-  panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 1);  
-  panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 1);  
-  panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 1);  
+  ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 10, callback);
+  panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
+  panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);  
+  panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 10);  
 
   ros::Rate loopRate(15);
   while(ros::ok()){
