@@ -115,8 +115,8 @@ void callback(const ImageConstPtr& in_image)
   cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
 
   // Definir el rango de colores blanco en HSV
-  cv::Scalar lowerWhite(0, 0, 200);  // Umbral inferior para blanco
-  cv::Scalar upperWhite(180, 30, 255);  // Umbral superior para blanco
+  cv::Scalar lowerWhite(0, 0, 250);  // Umbral inferior para blanco
+  cv::Scalar upperWhite(180, 100, 255);  // Umbral superior para blanco
 
   // Binarizar la imagen utilizando el rango de colores blanco
   cv::Mat binaryImage;
@@ -171,7 +171,7 @@ void callback(const ImageConstPtr& in_image)
   // gray_image_filter(roi) = 0;
 
   // Redimensionar la imagen
-  cv::Size nuevoTamano(imageWidth/2, imageHeight/8);
+  cv::Size nuevoTamano(imageWidth, imageHeight/8);
   cv::Mat imagenRedimensionada;
   cv::resize(gray_image_filter, imagenRedimensionada, nuevoTamano);
 
@@ -180,7 +180,7 @@ void callback(const ImageConstPtr& in_image)
 
 
 
-  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth/2, CV_8UC1);
+  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth, CV_8UC1);
 
   std::vector<cv::Vec4i> lines;
   cv::HoughLinesP(imagenRedimensionada, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
@@ -277,7 +277,7 @@ void callback(const ImageConstPtr& in_image)
 
 
   // Redimensionar la imagen
-  cv::Size resIm(imageHeight, imageWidth);
+  cv::Size resIm(imageWidth, imageHeight);
   cv::Mat imagen_reestablecida;
   cv::resize(resultImage, imagen_reestablecida, resIm);
 
@@ -315,6 +315,7 @@ void callback(const ImageConstPtr& in_image)
       cv::Point pt1_out_lin(x - 1000 * vx, y - 1000 * vy);
       cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
       cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+      cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
    }
 
   auto t8= Clock::now();
@@ -322,7 +323,7 @@ void callback(const ImageConstPtr& in_image)
 
   
   sensor_msgs::ImagePtr image_msg;
-  image_msg = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
+  image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
   image_msg->header = in_image->header;
   panelFeatures_pub.publish(image_msg);  
 
