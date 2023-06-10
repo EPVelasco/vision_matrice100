@@ -67,6 +67,7 @@ cv::Mat thinning(const cv::Mat& input)
 void callback(const ImageConstPtr& in_image)
 {
   auto t1 = Clock::now();
+  ros::Time start_time = ros::Time::now();
 
   cv_bridge::CvImagePtr cv_rgbCam;
       try
@@ -347,22 +348,28 @@ void callback(const ImageConstPtr& in_image)
  
   auto t8= Clock::now();
   std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
-
+  
+  ros::Time end_time = ros::Time::now();  
+  // Calcular la diferencia de tiempo
+  ros::Duration delay_ros = end_time - start_time;
   
   sensor_msgs::ImagePtr image_msg_mask;
   image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
   image_msg_mask->header = in_image->header;
+  image_msg_mask->header.stamp = ros::Time::now() + delay_ros;
   panelFeatures_pub.publish(image_msg_mask);  
 
 
   sensor_msgs::ImagePtr image_msg_rgb;
   image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
   image_msg_rgb->header = in_image->header;
+  image_msg_rgb->header.stamp = ros::Time::now() + delay_ros;
   panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
 
   sensor_msgs::ImagePtr image_msg_hsv;
   image_msg_hsv = cv_bridge::CvImage(std_msgs::Header(), "mono8", gray_image_filter).toImageMsg();
   image_msg_hsv->header = in_image->header;
+  image_msg_hsv->header.stamp = ros::Time::now() + delay_ros;
   panel_hsvfilter.publish(image_msg_hsv);  
 
   auto t9= Clock::now();
