@@ -22,7 +22,10 @@ using namespace sensor_msgs;
 using namespace std;
 
 //Publisher
-ros::Publisher panelFeatures_pub;   // features in RGB image
+ros::Publisher panelFeatures_pub;   // features mask image
+ros::Publisher panel_w_LinesFeatures_pub;   // features in RGB image
+ros::Publisher panel_hsvfilter;   // features in RGB image
+
 
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
@@ -171,7 +174,7 @@ void callback(const ImageConstPtr& in_image)
   // gray_image_filter(roi) = 0;
 
   // Redimensionar la imagen
-  cv::Size nuevoTamano(imageWidth, imageHeight/8);
+  cv::Size nuevoTamano(imageWidth/4, imageHeight/4);
   cv::Mat imagenRedimensionada;
   cv::resize(gray_image_filter, imagenRedimensionada, nuevoTamano);
 
@@ -180,20 +183,24 @@ void callback(const ImageConstPtr& in_image)
 
 
 
-  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/8, imageWidth, CV_8UC1);
+  cv::Mat filtered_image = cv::Mat::zeros(imageHeight/4, imageWidth/4, CV_8UC1);
 
   std::vector<cv::Vec4i> lines;
   cv::HoughLinesP(imagenRedimensionada, lines, rho,  theta, threshold, minLineLen, maxLineGap); //rho, theta, threshold, minLineLen, maxLineGap
 
   // float xc = 0 , yc = 0;
-  cv::Vec4i lin_group1(0, 0, 0, 0);
-  cv::Vec4i lin_group2(0, 0, 0, 0);
-  int contleft = 0;
-  int contrigth = 0;
+  // cv::Vec4i lin_group1(0, 0, 0, 0);
+  // cv::Vec4i lin_group2(0, 0, 0, 0);
+  // int contleft = 0;
+  // int contrigth = 0;
 
   auto t4= Clock::now();
   std::cout<<"time hough lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count()/1000000.0<<std::endl;
 
+  float line1_len =0;
+  float line2_len = 0;
+  cv::Vec4i line1_max (0, 0, 0, 0);
+  cv::Vec4i line2_max (0, 0, 0, 0);
 
   for (size_t i = 0; i < lines.size(); i++) {
         cv::Vec4i line = lines[i];
@@ -203,19 +210,35 @@ void callback(const ImageConstPtr& in_image)
 
         if((line[0]<imagenRedimensionada.cols/2 and line[2]<imagenRedimensionada.cols/2)) {
 
-          lin_group1[0] = line[0] + lin_group1[0];
-          lin_group1[1] = line[1] + lin_group1[1];
-          lin_group1[2] = line[2] + lin_group1[2];
-          lin_group1[3] = line[3] + lin_group1[3];
-          contleft++;
+          // lin_group1[0] = line[0] + lin_group1[0];
+          // lin_group1[1] = line[1] + lin_group1[1];
+          // lin_group1[2] = line[2] + lin_group1[2];
+          // lin_group1[3] = line[3] + lin_group1[3];
+          // contleft++;
+
+
+          // linea mas larga izquierda
+          float len_1 = sqrt(pow(line[0]-line[2],2)+pow(line[1]-line[3],2));
+          if (len_1>line1_len){
+            line1_len = len_1;
+            line1_max = line;
+          }
+
 
         }
         else{
-          lin_group2[0] = line[0] + lin_group2[0];
-          lin_group2[1] = line[1] + lin_group2[1];
-          lin_group2[2] = line[2] + lin_group2[2];
-          lin_group2[3] = line[3] + lin_group2[3];
-          contrigth++;
+          // lin_group2[0] = line[0] + lin_group2[0];
+          // lin_group2[1] = line[1] + lin_group2[1];
+          // lin_group2[2] = line[2] + lin_group2[2];
+          // lin_group2[3] = line[3] + lin_group2[3];
+          // contrigth++;
+
+          // linea mas larga derecha
+          float len_2 = sqrt(pow(line[0]-line[2],2)+pow(line[1]-line[3],2));
+          if (len_2>line2_len){
+            line2_len = len_2;
+            line2_max = line;
+          }
         }
     }
   }
@@ -232,38 +255,40 @@ void callback(const ImageConstPtr& in_image)
   // std::cout<<"Line2 :"<< lin_group2<<std::endl;
 
 
-  if (contleft >0 and contrigth >0 ){
+  // if (contleft >0 and contrigth >0 ){
 
-    lin_group1[0] = lin_group1[0]/contleft;
-    lin_group1[1] = lin_group1[1]/contleft;
-    lin_group1[2] = lin_group1[2]/contleft;
-    lin_group1[3] = lin_group1[3]/contleft;
+  //   lin_group1[0] = lin_group1[0]/contleft;
+  //   lin_group1[1] = lin_group1[1]/contleft;
+  //   lin_group1[2] = lin_group1[2]/contleft;
+  //   lin_group1[3] = lin_group1[3]/contleft;
 
-    lin_group2[0] = lin_group2[0]/contrigth;
-    lin_group2[1] = lin_group2[1]/contrigth;
-    lin_group2[2] = lin_group2[2]/contrigth;
-    lin_group2[3] = lin_group2[3]/contrigth;
+  //   lin_group2[0] = lin_group2[0]/contrigth;
+  //   lin_group2[1] = lin_group2[1]/contrigth;
+  //   lin_group2[2] = lin_group2[2]/contrigth;
+  //   lin_group2[3] = lin_group2[3]/contrigth;
 
-    // float angle_lin1 =  std::atan2(lin_group1[3] - lin_group1[1], lin_group1[2] - lin_group1[0])*180/CV_PI;
-    // float angle_lin2 =  std::atan2(lin_group2[3] - lin_group2[1], lin_group2[2] - lin_group2[0])*180/CV_PI;
-    // angle_lin2 = angle_lin2 -180;
 
-    // xc = (lin_group1[0] + lin_group1[2]+lin_group2[0] + lin_group2[2])/4;
-    // yc = imageHeight/2;
 
-   // xc = (max_x+min_x)/2;
-    // ang_t = (angle_lin1+angle_lin2)/2;
+  //   // float angle_lin1 =  std::atan2(lin_group1[3] - lin_group1[1], lin_group1[2] - lin_group1[0])*180/CV_PI;
+  //   // float angle_lin2 =  std::atan2(lin_group2[3] - lin_group2[1], lin_group2[2] - lin_group2[0])*180/CV_PI;
+  //   // angle_lin2 = angle_lin2 -180;
 
-    // std::cout<<"Angle degree: " << ang_t<<std::endl;
-    // ang_t = ang_t*CV_PI/180;
-    // std::cout<<"Angle rad: " << ang_t<<std::endl;
-    // std::cout<<"xc : " << xc<<std::endl;
-  }
-  else{
-    // xc = 0;
-    // yc = 0;
-    std::cout<<"[ERROR en deteccion de panel]: no hay suficientes lineas para deteccion"<<std::endl;
-  }
+  //   // xc = (lin_group1[0] + lin_group1[2]+lin_group2[0] + lin_group2[2])/4;
+  //   // yc = imageHeight/2;
+
+  //  // xc = (max_x+min_x)/2;
+  //   // ang_t = (angle_lin1+angle_lin2)/2;
+
+  //   // std::cout<<"Angle degree: " << ang_t<<std::endl;
+  //   // ang_t = ang_t*CV_PI/180;
+  //   // std::cout<<"Angle rad: " << ang_t<<std::endl;
+  //   // std::cout<<"xc : " << xc<<std::endl;
+  // }
+  // else{
+  //   // xc = 0;
+  //   // yc = 0;
+  //   std::cout<<"[ERROR en deteccion de panel]: no hay suficientes lineas para deteccion"<<std::endl;
+  // }
 
   auto t6= Clock::now();
   std::cout<<"not plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t6-t5).count()/1000000.0<<std::endl;
@@ -272,9 +297,11 @@ void callback(const ImageConstPtr& in_image)
   cv::Mat resultImage;
   cv::cvtColor(filtered_image, resultImage, cv::COLOR_GRAY2BGR);
 
-  cv::line(resultImage, cv::Point(lin_group1[0], lin_group1[1]), cv::Point(lin_group1[2], lin_group1[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-  cv::line(resultImage, cv::Point(lin_group2[0], lin_group2[1]), cv::Point(lin_group2[2], lin_group2[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+  // cv::line(resultImage, cv::Point(lin_group1[0], lin_group1[1]), cv::Point(lin_group1[2], lin_group1[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+  // cv::line(resultImage, cv::Point(lin_group2[0], lin_group2[1]), cv::Point(lin_group2[2], lin_group2[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
+  cv::line(resultImage, cv::Point(line1_max[0], line1_max[1]), cv::Point(line1_max[2], line1_max[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+  cv::line(resultImage, cv::Point(line2_max[0], line2_max[1]), cv::Point(line2_max[2], line2_max[3]), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
   // Redimensionar la imagen
   cv::Size resIm(imageWidth, imageHeight);
@@ -317,15 +344,26 @@ void callback(const ImageConstPtr& in_image)
       cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
       cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
    }
-
+ 
   auto t8= Clock::now();
   std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
 
   
-  sensor_msgs::ImagePtr image_msg;
-  image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
-  image_msg->header = in_image->header;
-  panelFeatures_pub.publish(image_msg);  
+  sensor_msgs::ImagePtr image_msg_mask;
+  image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
+  image_msg_mask->header = in_image->header;
+  panelFeatures_pub.publish(image_msg_mask);  
+
+
+  sensor_msgs::ImagePtr image_msg_rgb;
+  image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
+  image_msg_rgb->header = in_image->header;
+  panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
+
+  sensor_msgs::ImagePtr image_msg_hsv;
+  image_msg_hsv = cv_bridge::CvImage(std_msgs::Header(), "mono8", gray_image_filter).toImageMsg();
+  image_msg_hsv->header = in_image->header;
+  panel_hsvfilter.publish(image_msg_hsv);  
 
   auto t9= Clock::now();
   std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
@@ -355,6 +393,8 @@ int main(int argc, char** argv)
   std::cout<<"Panel Image mask Real initialized... :)";
 
   ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 10, callback);
-  panelFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
+  panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
+  panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);  
+  panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 10);  
   ros::spin();
 }
