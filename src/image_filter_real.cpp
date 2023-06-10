@@ -27,6 +27,13 @@ ros::Publisher panel_w_LinesFeatures_pub;   // features in RGB image
 ros::Publisher panel_hsvfilter;   // features in RGB image
 
 
+// images publish
+cv::Mat mono_resultImage = cv::Mat::zeros(480, 640, CV_8UC1);
+cv::Mat gray_image_filter;
+cv::Mat rgb_image;
+
+
+
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
 
@@ -40,6 +47,8 @@ float maxCan = 50;
 float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
+
+ros::Time start_time ;
 
 
 cv::Mat thinning(const cv::Mat& input)
@@ -68,7 +77,7 @@ cv::Mat thinning(const cv::Mat& input)
 void callback(const ImageConstPtr& in_image)
 {
   auto t1 = Clock::now();
-  ros::Time start_time = ros::Time::now();
+  start_time = ros::Time::now();
 
   cv_bridge::CvImagePtr cv_rgbCam;
       try
@@ -81,7 +90,7 @@ void callback(const ImageConstPtr& in_image)
         return;
       }
 
-  cv::Mat rgb_image  = cv_rgbCam->image;
+ rgb_image  = cv_rgbCam->image;
 
   // Obtener las dimensiones de la imagen
   int imageHeight = in_image->height;
@@ -176,7 +185,7 @@ void callback(const ImageConstPtr& in_image)
   // std::cout<<"time filtrado areas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
 
 
-  cv::Mat gray_image_filter;
+ 
   cv::cvtColor(outputImage, gray_image_filter, CV_BGR2GRAY);  
 
 
@@ -335,9 +344,7 @@ void callback(const ImageConstPtr& in_image)
   cv::Mat mono_img_result;
   cv::cvtColor(imagen_reestablecida, mono_img_result, cv::COLOR_BGR2GRAY);
 
-  cv::Mat mono_resultImage = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
-
-
+  
   std::vector<std::vector<cv::Point>> contours_2;
   cv::findContours(mono_img_result, contours_2, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
@@ -369,28 +376,6 @@ void callback(const ImageConstPtr& in_image)
   // auto t8= Clock::now();
   // std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
   
-  ros::Time end_time = ros::Time::now();  
-  // Calcular la diferencia de tiempo
-  ros::Duration delay_ros = end_time - start_time;
-  
-  sensor_msgs::ImagePtr image_msg_mask;
-  image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
-  image_msg_mask->header = in_image->header;
-  image_msg_mask->header.stamp = ros::Time::now() + delay_ros;
-  panelFeatures_pub.publish(image_msg_mask);  
-
-
-  sensor_msgs::ImagePtr image_msg_rgb;
-  image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
-  image_msg_rgb->header = in_image->header;
-  image_msg_rgb->header.stamp = ros::Time::now() + delay_ros;
-  panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
-
-  sensor_msgs::ImagePtr image_msg_hsv;
-  image_msg_hsv = cv_bridge::CvImage(std_msgs::Header(), "mono8", gray_image_filter).toImageMsg();
-  image_msg_hsv->header = in_image->header;
-  image_msg_hsv->header.stamp = ros::Time::now() + delay_ros;
-  panel_hsvfilter.publish(image_msg_hsv);  
 
   // auto t9= Clock::now();
   // std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
@@ -424,5 +409,36 @@ int main(int argc, char** argv)
   panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 1);  
   panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 1);  
   panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 1);  
-  ros::spin();
+
+  ros::Rate loopRate(15);
+  while(ros::ok()){
+    ros::spinOnce();
+    ros::Time end_time = ros::Time::now();  
+    // Calcular la diferencia de tiempo
+    ros::Duration delay_ros = end_time - start_time;
+    
+    sensor_msgs::ImagePtr image_msg_mask;
+    image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
+  // image_msg_mask->header = in_image->header;
+    image_msg_mask->header.stamp = ros::Time::now() + delay_ros;
+    panelFeatures_pub.publish(image_msg_mask);  
+
+
+    sensor_msgs::ImagePtr image_msg_rgb;
+    image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
+    //image_msg_rgb->header = in_image->header;
+    image_msg_rgb->header.stamp = ros::Time::now() + delay_ros;
+    panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
+
+    sensor_msgs::ImagePtr image_msg_hsv;
+    image_msg_hsv = cv_bridge::CvImage(std_msgs::Header(), "mono8", gray_image_filter).toImageMsg();
+  // image_msg_hsv->header = in_image->header;
+    image_msg_hsv->header.stamp = ros::Time::now() + delay_ros;
+    panel_hsvfilter.publish(image_msg_hsv);  
+
+  loopRate.sleep();
+    
+  } 
+
+  return 0;
 }
