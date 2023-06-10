@@ -152,8 +152,8 @@ void callback(const ImageConstPtr& in_image)
   // Definir el umbral de área para filtrar los contornos
  // double areaThreshold = 800.0; // Ajusta el umbral de área según tus necesidades
 
-  auto t2= Clock::now();
-  std::cout<<"time find contotours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
+  // auto t2= Clock::now();
+  // std::cout<<"time find contotours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 
   double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
   // Crear una imagen de salida para mostrar los contornos filtrados
@@ -172,8 +172,8 @@ void callback(const ImageConstPtr& in_image)
   }
 
 
-  auto t3= Clock::now();
-  std::cout<<"time filtrado areas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
+  // auto t3= Clock::now();
+  // std::cout<<"time filtrado areas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
 
 
   cv::Mat gray_image_filter;
@@ -215,8 +215,8 @@ void callback(const ImageConstPtr& in_image)
   // int contleft = 0;
   // int contrigth = 0;
 
-  auto t4= Clock::now();
-  std::cout<<"time hough lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count()/1000000.0<<std::endl;
+  // auto t4= Clock::now();
+  // std::cout<<"time hough lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t4-t3).count()/1000000.0<<std::endl;
 
   float line1_len =0;
   float line2_len = 0;
@@ -264,8 +264,8 @@ void callback(const ImageConstPtr& in_image)
     }
   }
 
-  auto t5= Clock::now();
-  std::cout<<"time bests lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count()/1000000.0<<std::endl;
+  // auto t5= Clock::now();
+  // std::cout<<"time bests lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t5-t4).count()/1000000.0<<std::endl;
 
 
   // promedio de las lineas
@@ -311,8 +311,8 @@ void callback(const ImageConstPtr& in_image)
   //   std::cout<<"[ERROR en deteccion de panel]: no hay suficientes lineas para deteccion"<<std::endl;
   // }
 
-  auto t6= Clock::now();
-  std::cout<<"not plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t6-t5).count()/1000000.0<<std::endl;
+  // auto t6= Clock::now();
+  // std::cout<<"not plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t6-t5).count()/1000000.0<<std::endl;
 
 
   cv::Mat resultImage;
@@ -341,8 +341,8 @@ void callback(const ImageConstPtr& in_image)
   std::vector<std::vector<cv::Point>> contours_2;
   cv::findContours(mono_img_result, contours_2, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-  auto t7= Clock::now();
-  std::cout<<"plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t7-t6).count()/1000000.0<<std::endl;
+  // auto t7= Clock::now();
+  // std::cout<<"plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t7-t6).count()/1000000.0<<std::endl;
 
 
   std::vector<cv::Vec4f> linesap;
@@ -366,8 +366,8 @@ void callback(const ImageConstPtr& in_image)
       cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
    }
  
-  auto t8= Clock::now();
-  std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
+  // auto t8= Clock::now();
+  // std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
   
   ros::Time end_time = ros::Time::now();  
   // Calcular la diferencia de tiempo
@@ -392,8 +392,8 @@ void callback(const ImageConstPtr& in_image)
   image_msg_hsv->header.stamp = ros::Time::now() + delay_ros;
   panel_hsvfilter.publish(image_msg_hsv);  
 
-  auto t9= Clock::now();
-  std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
+  // auto t9= Clock::now();
+  // std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
 
   auto t10= Clock::now();
   std::cout<<"time total: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;
