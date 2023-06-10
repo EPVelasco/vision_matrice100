@@ -39,6 +39,7 @@ float minCan = 20;
 float maxCan = 50;
 float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
+bool real_sim = true;  // (real == True) (sim == False)
 
 
 cv::Mat thinning(const cv::Mat& input)
@@ -119,8 +120,27 @@ void callback(const ImageConstPtr& in_image)
   cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
 
   // Definir el rango de colores blanco en HSV
-  cv::Scalar lowerWhite(0, 0, 250);  // Umbral inferior para blanco
-  cv::Scalar upperWhite(180, 100, 255);  // Umbral superior para blanco
+  cv::Scalar lowerWhite;
+  cv::Scalar upperWhite;
+
+  if (real_sim) // bandera para escoger entre la simulacion y el real (real == True) (sim == False)
+  {
+    lowerWhite = cv::Scalar(0, 0, 250);  // Umbral inferior para blanco
+    upperWhite = cv::Scalar(180, 100, 255);  // Umbral superior para blanco
+    std::cout<<"********Filtrado en REAL********"<<std::endl;
+  }
+  else
+  {
+    lowerWhite = cv::Scalar(0, 0, 200);  // Umbral inferior para blanco
+    upperWhite = cv::Scalar(180, 30, 255);  // Umbral superior para blanco
+    std::cout<<"********Filtrado en SIM********"<<std::endl;
+  }
+
+
+
+  // Definir el rango de colores blanco en HSV
+  
+
 
   // Binarizar la imagen utilizando el rango de colores blanco
   cv::Mat binaryImage;
@@ -395,6 +415,7 @@ int main(int argc, char** argv)
   nh.getParam("/maxCan", maxCan);
   nh.getParam("/imgTopic", imgTopic);
   nh.getParam("/area_filter", area_filter); 
+  nh.getParam("/real_sim",real_sim);
   
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";

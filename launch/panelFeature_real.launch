@@ -6,6 +6,7 @@
     <param name="threshold"   type="double" value="10.0" />
     <param name="minLineLen"  type="double" value="10.0" />
     <param name="maxLineGap"  type="double" value="10.0" />
+    <param name="real_sim"    type="bool"   value="True" />
 
     <!-- <param name="area_filter" type="double" value="1000.0" /> -->
     <param name="area_filter" type="double" value="100.0" />
