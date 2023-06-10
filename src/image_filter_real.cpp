@@ -420,9 +420,9 @@ int main(int argc, char** argv)
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
 
-  ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 10, callback);
-  panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
-  panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);  
-  panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 10);  
+  ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 1, callback);
+  panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 1);  
+  panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 1);  
+  panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 1);  
   ros::spin();
 }
