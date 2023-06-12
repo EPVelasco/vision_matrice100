@@ -189,7 +189,7 @@ void callback(const ImageConstPtr& in_image)
       cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
       float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
 
-      if (std::abs(angle) < 100 && std::abs(angle) > 40 ) {
+      if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
 
         cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
         cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
