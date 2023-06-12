@@ -138,6 +138,7 @@ void callback(const ImageConstPtr& in_image)
       bool flag_rigth = 0;
       for (int j = 0; j < imageWidth; ++j) { // columnas
           // Obtener el valor del píxel en (i, j)
+
           int pixel_left  = static_cast<int>(gray_image_filter.at<uchar>(i, j));
           int pixel_right = static_cast<int>(gray_image_filter.at<uchar>(i, imageWidth-j));
 
@@ -165,10 +166,13 @@ void callback(const ImageConstPtr& in_image)
 
   auto t3= Clock::now();
   std::cout<<"draw contours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
- 
+  
   std::vector<cv::Vec4f> linesap;
   for (const auto& contour : contours_2) {
       // Ajustar una línea a los contornos
+      if (contour.size()==0)
+        break;
+
       cv::Vec4f line;
       cv::fitLine(contour, line, cv::DIST_L2, 0, 0.01, 0.01);
       linesap.push_back(line); 
