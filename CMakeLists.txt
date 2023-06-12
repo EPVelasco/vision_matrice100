@@ -46,24 +46,11 @@ include_directories(
   ${Boost_INCLUDE_DIRS}
 )
 
-add_executable(panel_feature_node src/solar_panel_features.cpp)
-target_link_libraries(panel_feature_node
-   ${catkin_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-   ${Boost_LIBRARIES}
-)
-
 add_executable(aruco_detection_node src/aruco_detection.cpp)
 target_link_libraries(aruco_detection_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBRARIES}
-   ${Boost_LIBRARIES}
-)
-
-add_executable(system_excitation_node src/system_excitation.cpp)
-target_link_libraries(system_excitation_node
-   ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
 )
 
@@ -74,22 +61,8 @@ target_link_libraries(rosbag_rotate_node
    ${PCL_LIBRARIES}
 )
 
-add_executable(filtered_pointcloud_node src/filtered_pointcloud.cpp)
-target_link_libraries(filtered_pointcloud_node
-   ${catkin_LIBRARIES}
-   ${Boost_LIBRARIES}
-   ${PCL_LIBRARIES}
-)
-
-add_executable(image_filter_simulation_node src/image_filter_simulation.cpp)
-target_link_libraries(image_filter_simulation_node
-   ${catkin_LIBRARIES}
-   ${Boost_LIBRARIES}
-   ${OpenCV_LIBRARIES}
-)
-
-add_executable(image_filter_real_node src/image_filter_real.cpp)
-target_link_libraries(image_filter_real_node
+add_executable(image_filter_node src/feature_extraction.cpp)
+target_link_libraries(image_filter_node
    ${catkin_LIBRARIES}
    ${Boost_LIBRARIES}
    ${OpenCV_LIBRARIES}

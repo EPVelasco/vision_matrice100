@@ -57,7 +57,6 @@ void callback(const ImageConstPtr& in_image)
       }
 
   cv::Mat rgb_image  = cv_rgbCam->image;
-
   
   // Obtener las dimensiones de la imagen
   int imageHeight = in_image->height; // rows
@@ -71,23 +70,15 @@ void callback(const ImageConstPtr& in_image)
   {
     lowerWhite = cv::Scalar(0, 0, 250);  // Umbral inferior para blanco
     upperWhite = cv::Scalar(180, 100, 255);  // Umbral superior para blanco
-    //std::cout<<"********Filtrado en REAL** ";
   }
   else
   {
     lowerWhite = cv::Scalar(0, 0, 200);  // Umbral inferior para blanco
     upperWhite = cv::Scalar(180, 30, 255);  // Umbral superior para blanco
-   // std::cout<<"********Filtrado en SIM** ";
   }
-
-  // // Redimensionar la imagen
-  // cv::Size nuevoTamano(imageWidth, imageHeight);
-  // cv::Mat imagenRedimensionada;
-  // cv::resize(rgb_image, imagenRedimensionada, nuevoTamano);
 
   cv::Mat hsvImage;
   cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
-
 
   // Binarizar la imagen utilizando el rango de colores blanco
   cv::Mat binaryImage;
@@ -97,9 +88,6 @@ void callback(const ImageConstPtr& in_image)
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
  
-  auto t2= Clock::now();
-  std::cout<<"time find contotours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
-
   double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
   // Crear una imagen de salida para mostrar los contornos filtrados
   cv::Mat outputImage = cv::Mat::zeros(binaryImage.size(), CV_8UC3);
@@ -127,11 +115,6 @@ void callback(const ImageConstPtr& in_image)
   std::vector<cv::Point>  contour_left;
   std::vector<cv::Point> contour_rigth;
 
-  std::cout<<"Size_ "<< gray_image_filter.size()<<std::endl;
-  std::cout<<"Height "<< imageHeight<<std::endl;
-  std::cout<<"W_ "<< imageWidth<<std::endl;
-
-
   // Recorrer la imagen por filas y columnas
   for (int i = 100; i < imageHeight-100; ++i) { // filas
       bool flag_left = 0;
@@ -143,12 +126,10 @@ void callback(const ImageConstPtr& in_image)
           int pixel_right = static_cast<int>(gray_image_filter.at<uchar>(i, imageWidth-j));
 
           if (pixel_left!=0 && flag_left ==0){
-            //std::cout<<"Pixel: "<<i<<", "<<j<<". "<<pixel<<std::endl;
             contour_left.push_back(cv::Point(j, i));
             flag_left = 1;
           }
           if (pixel_right!=0 && flag_rigth ==0){
-            //std::cout<<"Pixel: "<<i<<", "<<j<<". "<<pixel<<std::endl;
             contour_rigth.push_back(cv::Point(imageWidth-j, i));
             flag_rigth = 1;
           }
@@ -163,16 +144,12 @@ void callback(const ImageConstPtr& in_image)
   std::vector<std::vector<cv::Point>> contours_2;
   contours_2.push_back(contour_left);
   contours_2.push_back(contour_rigth);
-
-  auto t3= Clock::now();
-  std::cout<<"draw contours: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t3-t2).count()/1000000.0<<std::endl;
-  
+   
   std::vector<cv::Vec4f> linesap;
   for (const auto& contour : contours_2) {
       // Ajustar una línea a los contornos
       if (contour.size()==0)
         break;
-
       cv::Vec4f line;
       cv::fitLine(contour, line, cv::DIST_L2, 0, 0.01, 0.01);
       linesap.push_back(line); 
@@ -190,18 +167,10 @@ void callback(const ImageConstPtr& in_image)
       float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
 
       if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
-
         cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
+        cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
       }
    }
-
-  // cv::Size sa_Tamano(imageWidth, imageHeight);
-  // cv::Mat imagen_salida;
-  // cv::resize(rgb_image, imagen_salida, sa_Tamano);
- 
-  // auto t8= Clock::now();
-  // std::cout<<"lasts plot lineas: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t8-t7).count()/1000000.0<<std::endl;
   
   ros::Time end_time = ros::Time::now();  
   // Calcular la diferencia de tiempo
@@ -225,11 +194,8 @@ void callback(const ImageConstPtr& in_image)
   image_msg_hsv->header.stamp = in_image->header.stamp + delay_ros;
   panel_hsvfilter.publish(image_msg_hsv);  
 
-  // auto t9= Clock::now();
-  // std::cout<<"time publish: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t9-t8).count()/1000000.0<<std::endl;
   auto t10= Clock::now();
   std::cout<<"time total: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;
-
   
 }
 
@@ -252,6 +218,10 @@ int main(int argc, char** argv)
   
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
+  if (real_sim)
+    std::cout<<"Modo Real";
+  else
+    std::cout<<"Modo Simulacion";
 
   ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 1, callback);
   panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 1);  
