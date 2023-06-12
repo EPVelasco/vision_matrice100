@@ -112,30 +112,33 @@ void callback(const ImageConstPtr& in_image)
   cv::Mat kernel_dil = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 50)); // Kernel de 1x21 para la dilatación vertical
   cv::dilate(gray_image_filter, gray_image_filter, kernel_dil);
   // variables para detectar lineas con otro algoritmo
+
+  //cv::cvtColor(gray_image_filter,outputImage, CV_GRAY2BGR);  
+
   std::vector<cv::Point>  contour_left;
   std::vector<cv::Point> contour_rigth;
 
   // Recorrer la imagen por filas y columnas
-  for (int i = 100; i < imageHeight-100; ++i) { // filas
-      bool flag_left = 0;
-      bool flag_rigth = 0;
-      for (int j = 0; j < imageWidth; ++j) { // columnas
+  for (int i = 100; i < imageHeight-100; i++) { // filas
+      bool flag_left = false;
+      bool flag_rigth = false;
+      for (int j = 1; j < imageWidth/2; j++) { // columnas
           // Obtener el valor del píxel en (i, j)
 
           int pixel_left  = static_cast<int>(gray_image_filter.at<uchar>(i, j));
           int pixel_right = static_cast<int>(gray_image_filter.at<uchar>(i, imageWidth-j));
 
-          if (pixel_left!=0 && flag_left ==0){
+          if (pixel_left==255 && flag_left == false){
             contour_left.push_back(cv::Point(j, i));
-            flag_left = 1;
+            flag_left = true;
           }
-          if (pixel_right!=0 && flag_rigth ==0){
+          if (pixel_right==255 && flag_rigth == false){
             contour_rigth.push_back(cv::Point(imageWidth-j, i));
-            flag_rigth = 1;
+            flag_rigth = true;
           }
-          if (flag_rigth == 1 && flag_left==1)
+          if (flag_rigth && flag_left)
             break;
-
+          
       }
   }
 
@@ -143,7 +146,16 @@ void callback(const ImageConstPtr& in_image)
 
   std::vector<std::vector<cv::Point>> contours_2;
   contours_2.push_back(contour_left);
+
+  // cv::drawContours(outputImage, std::vector<std::vector<cv::Point>>{contour_left}, 0, cv::Scalar(0, 0, 255), 2);
+  
   contours_2.push_back(contour_rigth);
+
+//   cv::drawContours(outputImage, std::vector<std::vector<cv::Point>>{contour_rigth}, 0, cv::Scalar(255, 0, 0), 2);
+
+//  cv::line(outputImage,cv::Point(imageWidth/2,0 ), cv::Point(imageWidth/2,imageHeight), cv::Scalar(255, 0, 255), 1, cv::LINE_AA);
+//  cv::line(outputImage,cv::Point(0,100), cv::Point(imageWidth,100), cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+//  cv::line(outputImage,cv::Point(0,imageHeight-100), cv::Point(imageWidth,imageHeight-100), cv::Scalar(255, 255, 0), 1, cv::LINE_AA);
    
   std::vector<cv::Vec4f> linesap;
   for (const auto& contour : contours_2) {
