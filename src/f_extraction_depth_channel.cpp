@@ -27,7 +27,7 @@ ros::Publisher panel_w_LinesFeatures_pub;   // features in RGB image
 ros::Publisher panel_hsvfilter;   // features in RGB image
 
 // topics a suscribirse del nodo
-std::string imgTopic   = "/camera/color/image_raw";
+std::string imgTopic   = "/camera/aligned_depth_to_color/image_raw";
 
 float rho = 1;
 float theta = 90;
@@ -40,15 +40,15 @@ float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
 
-void callback(const ImageConstPtr& in_image)
+void callback(const ImageConstPtr& in_depth)
 {
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
 
-  cv_bridge::CvImagePtr cv_rgbCam;
+  cv_bridge::CvImagePtr cv_dCam;
       try
       {
-        cv_rgbCam = cv_bridge::toCvCopy(in_image, sensor_msgs::image_encodings::BGR8);  // imagen de profundida de la camara 
+        cv_dCam = cv_bridge::toCvCopy(in_depth, sensor_msgs::image_encodings::TYPE_16UC1);  // imagen de profundida de la camara 
       }
       catch (cv_bridge::Exception& e)
       {
@@ -56,33 +56,37 @@ void callback(const ImageConstPtr& in_image)
         return;
       }
 
-  cv::Mat rgb_image  = cv_rgbCam->image;
+  cv::Mat depth_img  = cv_dCam->image;
+  cv::Mat image_grayscale = depth_img.clone();
+  image_grayscale.convertTo(image_grayscale, CV_8U, 1/256.0);
+
   
   // Obtener las dimensiones de la imagen
-  int imageHeight = in_image->height; // rows
-  int imageWidth = in_image->width; // cols
+  int imageHeight = in_depth->height; // rows
+  int imageWidth = in_depth->width; // cols
  
-  // Definir el rango de colores blanco en HSV
-  cv::Scalar lowerWhite;
-  cv::Scalar upperWhite;
+  // Definir el rango de grises
+  int umbralMin;
+  int umbralMax;
+
 
   if (real_sim) // bandera para escoger entre la simulacion y el real (real == True) (sim == False)
   {
-    lowerWhite = cv::Scalar(0, 0, 250);  // Umbral inferior para blanco
-    upperWhite = cv::Scalar(180, 100, 255);  // Umbral superior para blanco
+    umbralMin = 20;
+    umbralMax = 255;
   }
   else
   {
-    lowerWhite = cv::Scalar(0, 0, 200);  // Umbral inferior para blanco
-    upperWhite = cv::Scalar(180, 30, 255);  // Umbral superior para blanco
+    umbralMin = 0;
+    umbralMax = 200;
+
   }
 
-  cv::Mat hsvImage;
-  cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
-
-  // Binarizar la imagen utilizando el rango de colores blanco
+  // Binarizar la imagen utilizando el rango predefinido
   cv::Mat binaryImage;
-  cv::inRange(hsvImage, lowerWhite, upperWhite, binaryImage);
+  cv::threshold(image_grayscale, binaryImage, umbralMin, umbralMax, cv::THRESH_BINARY);
+
+
 
   // Buscar los contornos en la imagen binaria
   std::vector<std::vector<cv::Point>> contours;
@@ -180,7 +184,7 @@ void callback(const ImageConstPtr& in_image)
 
       if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
         cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
+        cv::line(depth_img, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
       }
    }
   
@@ -190,21 +194,21 @@ void callback(const ImageConstPtr& in_image)
   
   sensor_msgs::ImagePtr image_msg_mask;
   image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
-  image_msg_mask->header = in_image->header;
-  image_msg_mask->header.stamp = in_image->header.stamp + delay_ros;
+  image_msg_mask->header = in_depth->header;
+  image_msg_mask->header.stamp = in_depth->header.stamp + delay_ros;
   panelFeatures_pub.publish(image_msg_mask);  
 
   sensor_msgs::ImagePtr image_msg_rgb;
-  image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rgb_image).toImageMsg();
-  image_msg_rgb->header = in_image->header;
-  image_msg_rgb->header.stamp = in_image->header.stamp + delay_ros;
+  image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "mono16", depth_img).toImageMsg();
+  image_msg_rgb->header = in_depth->header;
+  image_msg_rgb->header.stamp = in_depth->header.stamp + delay_ros;
   panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
 
-  sensor_msgs::ImagePtr image_msg_hsv;
-  image_msg_hsv = cv_bridge::CvImage(std_msgs::Header(), "mono8", gray_image_filter).toImageMsg();
-  image_msg_hsv->header = in_image->header;
-  image_msg_hsv->header.stamp = in_image->header.stamp + delay_ros;
-  panel_hsvfilter.publish(image_msg_hsv);  
+  sensor_msgs::ImagePtr image_msg_bn;
+  image_msg_bn = cv_bridge::CvImage(std_msgs::Header(), "mono8", binaryImage).toImageMsg();
+  image_msg_bn->header = in_depth->header;
+  image_msg_bn->header.stamp = in_depth->header.stamp + delay_ros;
+  panel_hsvfilter.publish(image_msg_bn);  
 
   auto t10= Clock::now();
   std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;

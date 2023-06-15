@@ -686,7 +686,7 @@ int main(int argc, char** argv)
   message_filters::Subscriber<Odometry> odom_robot(nh, odom_dron, 5);
 
   typedef sync_policies::ApproximateTime<Image, Odometry> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), depthCam_sub, odom_robot);
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(200), depthCam_sub, odom_robot);
   sync.registerCallback(boost::bind(&callback, _1, _2));
 
   featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/dji_sdk/visual_servoing/img_features", 10);

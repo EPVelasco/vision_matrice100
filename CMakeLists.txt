@@ -68,6 +68,13 @@ target_link_libraries(image_filter_node
    ${OpenCV_LIBRARIES}
 )
 
+add_executable(f_extraction_depth_channel_node src/f_extraction_depth_channel.cpp)
+target_link_libraries(f_extraction_depth_channel_node
+   ${catkin_LIBRARIES}
+   ${Boost_LIBRARIES}
+   ${OpenCV_LIBRARIES}
+)
+
 add_executable(vs_sn_node src/visual_servo_space_null.cpp)
 target_link_libraries(vs_sn_node
    ${catkin_LIBRARIES}
