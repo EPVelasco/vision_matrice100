@@ -402,7 +402,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
           ,-Tdc(1,0) , Tdc(0,0)  , 0      ;
           
     Eigen::MatrixXf nR_Tc(6,6);
-    nR_Tc = Rdc.cwiseProduct(ntc);
+    nR_Tc = Rdc.cwiseProduct(ntc); // Rdc x tdc
 
     Eigen::MatrixXf T_n(6,6);
     T_n << Rdc(0,0) ,Rdc(0,1) ,Rdc(0,2) ,nR_Tc(0,0) ,nR_Tc(0,1) ,nR_Tc(0,2) 
@@ -415,15 +415,15 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     Eigen::MatrixXf Jcam_robot(4,6);
     Jcam_robot = J_img * T_n;
 
-    Eigen::MatrixXf pin_Jimg = J_img.completeOrthogonalDecomposition().pseudoInverse();
-    Eigen::MatrixXf pin_Jc_r = Jcam_robot.completeOrthogonalDecomposition().pseudoInverse();
+    //Eigen::MatrixXf pin_Jimg = J_img.completeOrthogonalDecomposition().pseudoInverse();
+    //Eigen::MatrixXf pin_Jc_r = Jcam_robot.completeOrthogonalDecomposition().pseudoInverse();
 
 
     ///////////////////////////LEY DE CONTROL SERVO VISUAL
 
     //////////////////// Nueva jacobiana
 
-    Eigen::MatrixXf J_th_im(2,6);
+    // Eigen::MatrixXf J_th_im(2,6);
     float v1 = x_chough(1,0);
     float v2 = x_chough(1,1);
     float u1 = x_chough(0,0);
@@ -432,11 +432,11 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
     cv::line(resultImage, cv::Point(pv1_tx,pv1_ty),cv::Point(pv2_tx,pv2_ty), cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
 
-    float dist_vu = sqrt(pow((v2-v1),2)+pow((u2-u1),2));
-    float angle_lin = std::atan2(u2-u1,v2-v1);
+    //float dist_vu = sqrt(pow((v2-v1),2)+pow((u2-u1),2));
+    //float angle_lin = std::atan2(u2-u1,v2-v1);
     float ang_theta = std::atan2((v2-v1),-(u2-u1));
     float r = sin (ang_theta) * (u1-(m)*v1);
-    float dist_vu_compx= dist_vu*sin(angle_lin);
+    // float dist_vu_compx= dist_vu*sin(angle_lin);
 
     /// jacobiano como el paper
     Eigen::MatrixXf J_raux(1,5);
@@ -536,27 +536,27 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
     q_vel = in_J_sal * r_theta + (Iden - in_J_sal* J_sal ) * v_null ;  //calculo de velocidades de salida que van al robot solo para el angulo theta
 
-    //// nueva jacobiana aumentada
-    Eigen::MatrixXf J_aux(2,2);
-    J_aux << sin(angle_lin) , dist_vu*cos(angle_lin),
-              0,                1;
+    // //// nueva jacobiana aumentada
+    // Eigen::MatrixXf J_aux(2,2);
+    // J_aux << sin(angle_lin) , dist_vu*cos(angle_lin),
+    //           0,                1;
 
-    //sin(angle_lin) , dist_vu*cos(angle_lin),
+    // //sin(angle_lin) , dist_vu*cos(angle_lin),
 
-    Eigen::MatrixXf J_aux2(2,4);
+    // Eigen::MatrixXf J_aux2(2,4);
 
-    J_aux2 <<     (u1-u2)/dist_vu, (v1 -v2)/dist_vu, -(u1-u2)/dist_vu, -(v1 -v2)/dist_vu,
-                  J_theta(0,0),    J_theta(0,1),    J_theta(0,2),    J_theta(0,3);
+    // J_aux2 <<     (u1-u2)/dist_vu, (v1 -v2)/dist_vu, -(u1-u2)/dist_vu, -(v1 -v2)/dist_vu,
+    //               J_theta(0,0),    J_theta(0,1),    J_theta(0,2),    J_theta(0,3);
 
 
-    J_th_im = J_aux * J_aux2 * Jcam_robot;
+    // J_th_im = J_aux * J_aux2 * Jcam_robot;
 
-    Eigen::MatrixXf pin_J_th_im = J_th_im.completeOrthogonalDecomposition().pseudoInverse();
+   // Eigen::MatrixXf pin_J_th_im = J_th_im.completeOrthogonalDecomposition().pseudoInverse();
 
-    Eigen::MatrixXf theta_p(2,1);
+    // Eigen::MatrixXf theta_p(2,1);
     
-    theta_p << lambda(0,0)* (dist_vu_compx - 0.0), 
-               lambda(1,0)* (angle_lin - 0.0);
+    // theta_p << lambda(0,0)* (dist_vu_compx - 0.0), 
+    //            lambda(1,0)* (angle_lin - 0.0);
         
    
   sensor_msgs::ImagePtr image_msg;
