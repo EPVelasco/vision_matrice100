@@ -24,6 +24,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <iostream>
 #include <chrono> 
+#include <csignal>
 
 // markers
 #include <visualization_msgs/Marker.h>
@@ -77,6 +78,41 @@ Eigen::MatrixXf lambda(8,1);  // ganancias seleccionadas en el control
 
 Eigen::MatrixXf q_vel(6,1) ; // velocidades del control servovisual
 Eigen::MatrixXf q_vel_dw(6,1) ; // velocidades del control servovisual
+
+void signalHandler(int signum)
+{
+  ROS_INFO("\nInterrupt signal received. Shutting down...");
+    
+      // Velocidades del cuerpo
+  geometry_msgs::Twist velCuerpo_msgs;
+  velCuerpo_msgs.linear.x =  0;    // Velocidad lineal en el eje x
+  velCuerpo_msgs.linear.y =  0;    // Velocidad lineal en el eje y
+  velCuerpo_msgs.linear.z =  0;    // Velocidad lineal en el eje z
+  velCuerpo_msgs.angular.x = 0;   // Velocidad angular en el eje x
+  velCuerpo_msgs.angular.y = 0;   // Velocidad angular en el eje y
+  velCuerpo_msgs.angular.z = 0;   // Velocidad angular en el eje z
+
+  // std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
+
+  veldrone_pub.publish(velCuerpo_msgs);
+
+  // velocidades del dron con respecto al mundo
+  geometry_msgs::Twist velCuerpoMundo_msgs;  
+  velCuerpoMundo_msgs.linear.x =  0;    // Velocidad lineal en el eje x
+  velCuerpoMundo_msgs.linear.y =  0;    // Velocidad lineal en el eje y
+  velCuerpoMundo_msgs.linear.z =  0;    // Velocidad lineal en el eje z
+  velCuerpoMundo_msgs.angular.x = 0;   // Velocidad angular en el eje x
+  velCuerpoMundo_msgs.angular.y = 0;   // Velocidad angular en el eje y
+  velCuerpoMundo_msgs.angular.z = 0;   // Velocidad angular en el eje z
+
+  // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
+
+  veldroneWorld_pub.publish(velCuerpoMundo_msgs);
+
+
+  ros::shutdown();
+  exit(0);
+}
 
 
 ///////////////////////////////////////callback
@@ -683,6 +719,9 @@ int main(int argc, char** argv)
   nh.getParam("/vision_params/lambda", param);
   // ganacias del control cineamtico
   lambda <<  (double)param[0], (double)param[1], (double)param[2], (double)param[3], (double)param[4], (double)param[5], (double)param[6], (double)param[7];
+
+  // Registrar el manejador de señal para SIGINT
+    signal(SIGINT, signalHandler);
 
   message_filters::Subscriber<Image>    depthCam_sub(nh, imgTopic, 5);
   message_filters::Subscriber<Odometry> odom_robot(nh, odom_dron, 5);
