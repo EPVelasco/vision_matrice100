@@ -11,6 +11,8 @@
     <param name="odom_dron"         type="str" value="/dji_sdk/odometry" />  
 	<param name="imgTopic"          type="str" value="/panel/image/mask" /> 
 
+    <param name="vx_lineal"         type="double" value="0.2" />    
+
     <!-- Publisher -->
     <param name="publish_vel_drone_topic"       type="str" value="/dji_sdk/visual_servoing/vel/drone" />     
     <param name="publish_vel_drone_world_topic" type="str" value="/dji_sdk/visual_servoing/vel/drone_world"/> 

@@ -40,6 +40,9 @@ float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
 
+float hsv_v = 200;
+float hsv_s = 100;
+
 void callback(const ImageConstPtr& in_image)
 {
   auto t1 = Clock::now();
@@ -68,8 +71,8 @@ void callback(const ImageConstPtr& in_image)
 
   if (real_sim) // bandera para escoger entre la simulacion y el real (real == True) (sim == False)
   {
-    lowerWhite = cv::Scalar(0, 0, 250);  // Umbral inferior para blanco
-    upperWhite = cv::Scalar(180, 100, 255);  // Umbral superior para blanco
+    lowerWhite = cv::Scalar(0, 0, hsv_v);  // Umbral inferior para blanco
+    upperWhite = cv::Scalar(180, hsv_s, 255);  // Umbral superior para blanco
   }
   else
   {
@@ -227,7 +230,9 @@ int main(int argc, char** argv)
   nh.getParam("/imgTopic", imgTopic);
   nh.getParam("/area_filter", area_filter); 
   nh.getParam("/real_sim",real_sim);
-  
+  nh.getParam("/hsv_v", hsv_v); 
+  nh.getParam("/hsv_s",hsv_s);
+ 
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
   if (real_sim)

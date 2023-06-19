@@ -10,7 +10,7 @@
     
     <param name="area_filter" type="double" value="10.0" />
 
-    <param name="imgTopic"   type="str" value="/camera/color/image_raw"/>
+    <param name="imgTopic"   type="str" value="/sim/color/image_raw"/>
 
     <node pkg="vision_matrice100" type="image_filter_node" name="image_filter_node" output="screen"/>
 

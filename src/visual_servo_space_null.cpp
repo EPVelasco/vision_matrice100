@@ -64,6 +64,7 @@ float rho_hough = 1;
 float theta = CV_PI/180;
 float threshold = 100;
 float angle_desired = 0;
+float vx_lineal = 0.2; // velocidad hacia adelante en espacios nulos (m/s)
  
 
 // matrices de calibracion entre la camara y el dron
@@ -512,7 +513,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     gain_null = lambda(2,0)*gain_null ;
 
     Eigen::MatrixXf v_null(6,1);
-    v_null << 0.2/(1+r_th_norm.norm()),
+    v_null << vx_lineal/(1+r_th_norm.norm()),
               0,
               0,
               0,
@@ -651,6 +652,7 @@ int main(int argc, char** argv)
 
   nh.getParam("/publish_vel_drone_topic", vel_drone_topic);
   nh.getParam("/publish_vel_drone_world_topic", vel_drone_world_topic);
+  nh.getParam("/vx_lineal",vx_lineal);
 
     
   XmlRpc::XmlRpcValue param;
