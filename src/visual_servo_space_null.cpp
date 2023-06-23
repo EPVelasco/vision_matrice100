@@ -34,6 +34,7 @@
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
 #include "geometry_msgs/Twist.h"
+#include "geometry_msgs/TwistStamped.h"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -119,6 +120,7 @@ void signalHandler(int signum)
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
   auto t1 = Clock::now();
+  ros::Time start_time = ros::Time::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
       try
@@ -595,22 +597,11 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     // theta_p << lambda(0,0)* (dist_vu_compx - 0.0), 
     //            lambda(1,0)* (angle_lin - 0.0);
         
-   
-  sensor_msgs::ImagePtr image_msg;
-  image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
-  image_msg->header.stamp  = in_mask->header.stamp;
- 
-  featuresRGB_pub.publish(image_msg);
-
-
   //////////// Envio de resultados de velocidades al topic de odometria 
 
   if (!control_ok || xc ==0)
     q_vel << 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0 ;
-
-
-
-  
+ 
   ////////////// conversion velocidades dron mundo
   
   double x_q = odom_msg->pose.pose.orientation.x;
@@ -633,32 +624,51 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
   q_vel_dw = d_W * q_vel;
 
+  ros::Time end_time = ros::Time::now();  
+  // Calcular la diferencia de tiempo
+  ros::Duration delay_ros = end_time - start_time;
   
   // Velocidades del cuerpo
-  geometry_msgs::Twist velCuerpo_msgs;
-  velCuerpo_msgs.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
-  velCuerpo_msgs.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
-  velCuerpo_msgs.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
-  velCuerpo_msgs.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
-  velCuerpo_msgs.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
-  velCuerpo_msgs.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
+  geometry_msgs::TwistStamped  velCuerpo_msgs;
+
+  velCuerpo_msgs.header = in_mask->header;
+  velCuerpo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
+
+  velCuerpo_msgs.twist.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
+  velCuerpo_msgs.twist.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
+  velCuerpo_msgs.twist.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
+  velCuerpo_msgs.twist.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
+  velCuerpo_msgs.twist.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
+  velCuerpo_msgs.twist.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
 
   // std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
 
   veldrone_pub.publish(velCuerpo_msgs);
 
   // velocidades del dron con respecto al mundo
-  geometry_msgs::Twist velCuerpoMundo_msgs;  
-  velCuerpoMundo_msgs.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
-  velCuerpoMundo_msgs.linear.y =  q_vel_dw(1,0);    // Velocidad lineal en el eje y
-  velCuerpoMundo_msgs.linear.z =  q_vel_dw(2,0);    // Velocidad lineal en el eje z
-  velCuerpoMundo_msgs.angular.x = q_vel_dw(3,0);   // Velocidad angular en el eje x
-  velCuerpoMundo_msgs.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
-  velCuerpoMundo_msgs.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
+  geometry_msgs::TwistStamped  velCuerpoMundo_msgs;  
+
+
+  velCuerpoMundo_msgs.header = in_mask->header;
+  velCuerpoMundo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
+
+  velCuerpoMundo_msgs.twist.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
+  velCuerpoMundo_msgs.twist.linear.y =  q_vel_dw(1,0);    // Velocidad lineal en el eje y
+  velCuerpoMundo_msgs.twist.linear.z =  q_vel_dw(2,0);    // Velocidad lineal en el eje z
+  velCuerpoMundo_msgs.twist.angular.x = q_vel_dw(3,0);   // Velocidad angular en el eje x
+  velCuerpoMundo_msgs.twist.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
+  velCuerpoMundo_msgs.twist.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
 
   // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
 
   veldroneWorld_pub.publish(velCuerpoMundo_msgs);
+    
+  sensor_msgs::ImagePtr image_msg;
+  image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
+  image_msg->header.stamp  = in_mask->header.stamp;
+ 
+  featuresRGB_pub.publish(image_msg);
+
   
   auto t2= Clock::now();
   std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
