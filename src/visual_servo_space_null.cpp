@@ -636,7 +636,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   // Velocidades del cuerpo
   geometry_msgs::TwistStamped  velCuerpo_msgs;
 
-  velCuerpo_msgs.header = in_mask->header;
+  //velCuerpo_msgs.header = in_mask->header;
+  velCuerpo_msgs.header.frame_id = "base_link";
   velCuerpo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
 
   velCuerpo_msgs.twist.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
@@ -654,7 +655,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   geometry_msgs::TwistStamped  velCuerpoMundo_msgs;  
 
 
-  velCuerpoMundo_msgs.header = in_mask->header;
+  //velCuerpoMundo_msgs.header = in_mask->header;
+  velCuerpoMundo_msgs.header.frame_id = "world";
   velCuerpoMundo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
 
   velCuerpoMundo_msgs.twist.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
@@ -746,8 +748,8 @@ int main(int argc, char** argv)
   sync.registerCallback(boost::bind(&callback, _1, _2));
 
   featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/dji_sdk/visual_servoing/img_features", 10);
-  veldrone_pub = nh.advertise<geometry_msgs::Twist>(vel_drone_topic, 10);
-  veldroneWorld_pub = nh.advertise<geometry_msgs::Twist>(vel_drone_world_topic, 10);
+  veldrone_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_topic, 10);
+  veldroneWorld_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_world_topic, 10);
    
   ros::spin();
 
