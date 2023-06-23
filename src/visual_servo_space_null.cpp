@@ -67,6 +67,8 @@ float theta = CV_PI/180;
 float threshold = 100;
 float angle_desired = 0;
 float vx_lineal = 0.2; // velocidad hacia adelante en espacios nulos (m/s)
+
+double d_panel_d = 300.0;//  distancia al panel deseada en pixeles
  
 
 // matrices de calibracion entre la camara y el dron
@@ -276,12 +278,23 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   // else
   //     median = depthValues[n / 2];
   // double pixel_factor = 1000000.0/median;
-  double x_l = (x11 + x12)/2; // punto x de la linea izquierda
-  double x_r = (x21 + x22)/2; // punto x de la linea derecha
-  double y_l = yc;
-  double y_r = yc;
-  double dist_panel = sqrt(pow((x_r-x_l),2));
-  double pixel_factor = 50.0;
+
+  double x_l = (x11 + x12)/2 ; // punto x de la linea izquierda en metros
+  double x_r = (x21 + x22)/2 ; // punto x de la linea derecha en metros 
+  double y_l = yc;            // punto y de la linea izquierda en metros
+  double y_r = yc;            // punto y de la linea derecha en metros
+
+  // altura deseada y actual sacadas por la dsitancia entre los puntos medios sacados del panel.
+  // estas generan un error que van a espacios nulos y que s emultiplican por una ganancia k_k
+
+  double d_panel_r = sqrt(pow((x_r-x_l),2)+pow((y_l-y_r),2)); //  distancia al panel real en pixeles
+ 
+  
+  double pixel_factor = (d_panel_r/d_panel_d)*100;
+
+  //condicion impedir un pixel_factor no deseado
+  // if (d_panel_r<200 || d_panel_r>500)
+  //   xc =0; // cuando este xc es igual a cero las velocidades del controlador tambien van a cero
 
   // puntos verticales
   float pv1_tx = (xc + pixel_factor*cos(ang_t-CV_PI/2));
@@ -297,7 +310,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   cv::Mat line_path_img = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
   cv::line(line_path_img, cv::Point(pv1_tx, pv1_ty), cv::Point(pv2_tx, pv2_ty), cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
-  
+
+
   // std::vector<cv::Vec2f> lineas;
   // cv::HoughLines(line_path_img, lineas, rho_hough, theta, threshold);
 
@@ -368,6 +382,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   cv::circle(resultImage, center, 3, cv::Scalar(255, 0, 0), 3);
   cv::line(resultImage, center,cv::Point(center.x+40,center.y), cv::Scalar(0, 0, 255), 1, cv::LINE_AA);
   cv::line(resultImage, center,cv::Point(center.x,center.y+40), cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+  cv::line(resultImage, cv::Point(pv1_tx,pv1_ty),cv::Point(pv2_tx,pv2_ty), cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
   /// Distancia perpendicular 
 
 
@@ -474,7 +489,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     float u2 = x_chough(0,1);
     float m = (u2-u1)/(v2-v1);
 
-    cv::line(resultImage, cv::Point(pv1_tx,pv1_ty),cv::Point(pv2_tx,pv2_ty), cv::Scalar(0, 255, 255), 1, cv::LINE_AA);
+    
 
     //float dist_vu = sqrt(pow((v2-v1),2)+pow((u2-u1),2));
     //float angle_lin = std::atan2(u2-u1,v2-v1);
@@ -558,7 +573,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     Eigen::MatrixXf v_null(6,1);
     v_null << vx_lineal/(1+r_th_norm.norm()),
               0,
-              0,
+              0.0025*(d_panel_r-d_panel_d),
               0,
               0,
               0;    
@@ -706,6 +721,7 @@ int main(int argc, char** argv)
   nh.getParam("/publish_vel_drone_topic", vel_drone_topic);
   nh.getParam("/publish_vel_drone_world_topic", vel_drone_world_topic);
   nh.getParam("/vx_lineal",vx_lineal);
+  nh.getParam("/d_panel_d",d_panel_d);
 
     
   XmlRpc::XmlRpcValue param;
