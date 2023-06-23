@@ -276,6 +276,11 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   // else
   //     median = depthValues[n / 2];
   // double pixel_factor = 1000000.0/median;
+  double x_l = (x11 + x12)/2; // punto x de la linea izquierda
+  double x_r = (x21 + x22)/2; // punto x de la linea derecha
+  double y_l = yc;
+  double y_r = yc;
+  double dist_panel = sqrt(pow((x_r-x_l),2));
   double pixel_factor = 50.0;
 
   // puntos verticales
