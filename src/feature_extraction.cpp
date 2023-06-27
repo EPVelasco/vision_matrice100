@@ -14,6 +14,8 @@
 #include <opencv2/core/eigen.hpp>
 #include <iostream>
 #include <chrono> 
+#include "vision_matrice100/DurationStamped.h"
+
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -25,6 +27,7 @@ using namespace std;
 ros::Publisher panelFeatures_pub;   // features mask image
 ros::Publisher panel_w_LinesFeatures_pub;   // features in RGB image
 ros::Publisher panel_hsvfilter;   // features in RGB image
+ros::Publisher time_pub;          // tiempo de ejecucion
 
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
@@ -211,7 +214,12 @@ void callback(const ImageConstPtr& in_image)
 
   auto t10= Clock::now();
   std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;
-  
+    // mensaje de tiempo de ejecucion
+  vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
+  time_msg.header.stamp = in_image->header.stamp + delay_ros;  // Asignar la marca de tiempo actual al encabezado
+  time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
+
+  time_pub.publish(time_msg);  // Publicar el mensaje
 }
 
 int main(int argc, char** argv)
@@ -244,5 +252,6 @@ int main(int argc, char** argv)
   panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
   panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);  
   panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 10);  
+  time_pub = nh.advertise<vision_matrice100::DurationStamped>("/panel/image/runtime", 10);  
   ros::spin();
 }

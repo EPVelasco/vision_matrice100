@@ -23,6 +23,16 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+add_message_files(
+	FILES
+	DurationStamped.msg
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
+
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED)

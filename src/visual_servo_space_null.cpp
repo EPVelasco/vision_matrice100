@@ -26,15 +26,14 @@
 #include <chrono> 
 #include <csignal>
 
-// markers
-#include <visualization_msgs/Marker.h>
-
 #include "sensor_msgs/Joy.h"
 
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
 #include "geometry_msgs/Twist.h"
 #include "geometry_msgs/TwistStamped.h"
+#include "vision_matrice100/DurationStamped.h"
+
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -52,6 +51,7 @@ ros::Publisher featurespcl_pub;   // features in pcl
 ros::Publisher path_pub;          // path coordinates 
 ros::Publisher veldroneWorld_pub; // velocidades dron- munod
 ros::Publisher veldrone_pub;      // velocidades dron
+ros::Publisher time_pub;          // tiempo de ejecucion
 
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
@@ -647,6 +647,15 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   ros::Time end_time = ros::Time::now();  
   // Calcular la diferencia de tiempo
   ros::Duration delay_ros = end_time - start_time;
+
+  // // mensaje de tiempo de ejecucion
+
+  vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
+  time_msg.header.stamp = in_mask->header.stamp + delay_ros;  // Asignar la marca de tiempo actual al encabezado
+  time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
+
+  time_pub.publish(time_msg);  // Publicar el mensaje
+
   
   // Velocidades del cuerpo
   geometry_msgs::TwistStamped  velCuerpo_msgs;
@@ -766,6 +775,7 @@ int main(int argc, char** argv)
   featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/dji_sdk/visual_servoing/img_features", 10);
   veldrone_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_topic, 10);
   veldroneWorld_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_world_topic, 10);
+  time_pub = nh.advertise<vision_matrice100::DurationStamped>("/dji_sdk/visual_servoing/runtime", 10);  
    
   ros::spin();
 
