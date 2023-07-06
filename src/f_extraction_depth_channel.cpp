@@ -192,23 +192,23 @@ void callback(const ImageConstPtr& in_depth)
   // Calcular la diferencia de tiempo
   ros::Duration delay_ros = end_time - start_time;
   
-  sensor_msgs::ImagePtr image_msg_mask;
-  image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
-  image_msg_mask->header = in_depth->header;
-  image_msg_mask->header.stamp = in_depth->header.stamp + delay_ros;
-  panelFeatures_pub.publish(image_msg_mask);  
+  // sensor_msgs::ImagePtr image_msg_mask;
+  // image_msg_mask = cv_bridge::CvImage(std_msgs::Header(), "mono8", mono_resultImage).toImageMsg();
+  // image_msg_mask->header = in_depth->header;
+  // image_msg_mask->header.stamp = in_depth->header.stamp + delay_ros;
+  // panelFeatures_pub.publish(image_msg_mask);  
 
-  sensor_msgs::ImagePtr image_msg_rgb;
-  image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "mono16", depth_img).toImageMsg();
-  image_msg_rgb->header = in_depth->header;
-  image_msg_rgb->header.stamp = in_depth->header.stamp + delay_ros;
-  panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
+  // sensor_msgs::ImagePtr image_msg_rgb;
+  // image_msg_rgb = cv_bridge::CvImage(std_msgs::Header(), "mono16", depth_img).toImageMsg();
+  // image_msg_rgb->header = in_depth->header;
+  // image_msg_rgb->header.stamp = in_depth->header.stamp + delay_ros;
+  // panel_w_LinesFeatures_pub.publish(image_msg_rgb);  
 
-  sensor_msgs::ImagePtr image_msg_bn;
-  image_msg_bn = cv_bridge::CvImage(std_msgs::Header(), "mono8", binaryImage).toImageMsg();
-  image_msg_bn->header = in_depth->header;
-  image_msg_bn->header.stamp = in_depth->header.stamp + delay_ros;
-  panel_hsvfilter.publish(image_msg_bn);  
+  // sensor_msgs::ImagePtr image_msg_bn;
+  // image_msg_bn = cv_bridge::CvImage(std_msgs::Header(), "mono8", binaryImage).toImageMsg();
+  // image_msg_bn->header = in_depth->header;
+  // image_msg_bn->header.stamp = in_depth->header.stamp + delay_ros;
+  // panel_hsvfilter.publish(image_msg_bn);  
 
   auto t10= Clock::now();
   std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;

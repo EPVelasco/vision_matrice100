@@ -92,6 +92,11 @@ target_link_libraries(vs_sn_node
    ${OpenCV_LIBRARIES}
 )
 
+add_executable(imu_gravity_node src/add_gravity_IMU.cpp)
+target_link_libraries(imu_gravity_node
+   ${catkin_LIBRARIES}
+)
+
 
 
 
