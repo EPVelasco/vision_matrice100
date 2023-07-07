@@ -11,7 +11,7 @@
     <param name="odom_dron"         type="str" value="/dji_sdk/odometry" />  
 	<param name="imgTopic"          type="str" value="/panel/image/mask" /> 
 
-    <param name="vx_lineal"         type="double" value="0.5" />    <!-- Velocidad lineal -->
+    <param name="vx_lineal"         type="double" value="1.0" />    <!-- Velocidad lineal -->
     <param name="d_panel_d"         type="double" value="400.0" />   <!-- Ancho en pixeles del panel deseado -->  
 
     <!-- Publisher -->

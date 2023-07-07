@@ -12,10 +12,15 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
   // Crear una nueva IMU para publicar
   sensor_msgs::Imu new_imu;
 
+  
+
   // Copiar los datos de orientación y velocidad lineal de la IMU original a la nueva IMU
   new_imu.orientation = msg->orientation;
   new_imu.angular_velocity = msg->angular_velocity;
 
+
+  new_imu.header = msg->header;
+  new_imu.header.stamp = msg->header.stamp;
   // Obtener los datos de la aceleración de la IMU original
   double ax = msg->linear_acceleration.x;
   double ay = msg->linear_acceleration.y;
@@ -29,7 +34,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 
   // Calcular la matriz de rotación a partir de los cuaterniones
   Eigen::Quaterniond q(qw, qx, qy, qz);
-  Eigen::Matrix3d rotation_matrix = q.toRotationMatrix();
+  Eigen::Matrix3d rotation_matrix = q.normalized().toRotationMatrix();
 
   // Ajustar el vector de gravedad según la orientación de la IMU
   gravity_vector = rotation_matrix * Eigen::Vector3d(0, 0, -9.8);
