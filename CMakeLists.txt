@@ -96,7 +96,11 @@ add_executable(imu_gravity_node src/add_gravity_IMU.cpp)
 target_link_libraries(imu_gravity_node
    ${catkin_LIBRARIES}
 )
+add_executable(lidar_to_dron_node src/lidar_to_dron.cpp)
+target_link_libraries(lidar_to_dron_node
+   ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
 
-
+)
 
 

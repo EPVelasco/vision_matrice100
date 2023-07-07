@@ -59,6 +59,7 @@
         "typeindex": "cpp",
         "typeinfo": "cpp",
         "core": "cpp",
-        "csignal": "cpp"
+        "csignal": "cpp",
+        "numericaldiff": "cpp"
     }
 }
