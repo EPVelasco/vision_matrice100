@@ -41,7 +41,7 @@ ros::Publisher panel_LinesFeatures_pub; // validacion de color
 ros::Publisher lines_features_pub; // publico los parametros encontrado de las lineas izquierda y derecha
 
 // topics a suscribirse del nodo
-std::string rgb_Topic   = "/camera/color/image_raw";
+std::string rgb_Topic   = "/sim/color/image_raw";
 std::string depth_Topic = "/camera/aligned_depth_to_color/image_raw";
 
 
@@ -312,6 +312,8 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
 
         P_right = P_left;
         inicio_kalman = false;
+        l_pe_l = lc_l;
+        l_pe_r = lc_r;
 
        }
       else{        
