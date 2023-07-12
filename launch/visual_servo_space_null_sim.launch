@@ -15,7 +15,7 @@
     <param name="d_panel_d"         type="double" value="300.0" />   <!-- Ancho en pixeles del panel deseado -->
 
     <!-- Publisher -->
-    <param name="publish_vel_drone_topic"       type="str" value="/dji_sdk/visual_servoing/vel/drone" />     
+    <param name="publish_vel_drone_topic"       type="str" value="/m100/velocityControl" />     
     <param name="publish_vel_drone_world_topic" type="str" value="/dji_sdk/visual_servoing/vel/drone_world"/> 
 
 
