@@ -24,6 +24,8 @@
 #include "vision_matrice100/DurationStamped.h"
 #include "../include/utils_lib.h"
 
+#include <nav_msgs/Odometry.h>
+
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -36,6 +38,7 @@ using namespace message_filters;
 ros::Publisher pub_img_out;   // publish image mask
 ros::Publisher time_pub;      // tiempo de ejecucion
 ros::Publisher panel_LinesFeatures_pub; // validacion de color
+ros::Publisher lines_features_pub; // publico los parametros encontrado de las lineas izquierda y derecha
 
 // topics a suscribirse del nodo
 std::string rgb_Topic   = "/camera/color/image_raw";
@@ -103,7 +106,7 @@ std::tuple<cv::Vec4f, Eigen::MatrixXd> kalman_filter( Eigen::VectorXd l_hat, flo
 
   P = A * P * A.transpose() + 1.0* Q;
   Eigen::MatrixXd var_m(4,4) ;
-  var_m = H * P * H.transpose() + 100.0 *R;
+  var_m = H * P * H.transpose() + 100 *R;
   // Actualización del estado y la covarianza
   K = P * H.transpose() * var_m.inverse();
 
@@ -316,16 +319,17 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
           lc_l = line;
           lp_l = (1/T)* (lc_l- l_pe_l);          
           vec_lp_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3], lp_l[0], lp_l[1], lp_l[2], lp_l[3];
+          l_pe_l = lc_l;
         }
         else{
           lc_r = line;
           lp_r = (1/T)* (lc_r- l_pe_r);          
           vec_lp_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3], lp_r[0], lp_r[1], lp_r[2], lp_r[3];
+          l_pe_r = lc_r;
         }
       }
-
-      l_pe_l = lc_l;
-      l_pe_r = lc_r;
+     
+      
 
       cv::Vec4f line_kalman_left(0,0,0,0);
       cv::Vec4f line_kalman_right(0,0,0,0);
@@ -455,6 +459,22 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   // time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
 
   // time_pub.publish(time_msg);  // Publicar el mensaje
+
+  // publicar las caractersiticas de cada linea en un mensaje de odometria para validar
+
+  nav_msgs::Odometry lines_features_msg;
+  lines_features_msg.header.frame_id = "base_link";
+  lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
+  lines_features_msg.pose.pose.orientation.x = lc_l(0);
+  lines_features_msg.pose.pose.orientation.y = lc_l(1);
+  lines_features_msg.pose.pose.orientation.z = lc_l(2);
+  lines_features_msg.pose.pose.orientation.w = lc_l(3);
+  lines_features_msg.pose.pose.position.x = lc_r(0);
+  lines_features_msg.pose.pose.position.y = lc_r(1);
+  lines_features_msg.pose.pose.position.z = lc_r(2);
+  lines_features_msg.twist.twist.linear.x = lc_r(3);
+  lines_features_pub.publish(lines_features_msg);
+
 }
 
 int main(int argc, char** argv)
@@ -495,6 +515,8 @@ int main(int argc, char** argv)
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
 
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
+
+  lines_features_pub  = nh.advertise<nav_msgs::Odometry>("/panel/image/lines_features", 10);
 
   ros::spin();
 }
