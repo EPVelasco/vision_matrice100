@@ -32,7 +32,6 @@ generate_messages(
   std_msgs
 )
 
-
 find_package(PCL REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(Boost REQUIRED)
@@ -55,6 +54,13 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
 )
+
+# Declare a C++ library
+add_library(${PROJECT_NAME}
+  #src/${PROJECT_NAME}/optimus_vision.cpp
+  src/utils_lib.cpp
+)
+
 
 add_executable(aruco_detection_node src/aruco_detection.cpp)
 target_link_libraries(aruco_detection_node
@@ -101,6 +107,12 @@ target_link_libraries(lidar_to_dron_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
 
+)
+
+add_executable(kalman_lines_node src/kalman_filter_panelLines.cpp src/utils_lib.cpp)
+target_link_libraries(kalman_lines_node
+   ${catkin_LIBRARIES}
+   ${OpenCV_LIBRARIES}
 )
 
 

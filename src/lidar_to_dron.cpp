@@ -1,3 +1,6 @@
+/*Este programa transforma la nube de puntos a referencia de la odoemtria del dron. De esta manera se puede 
+hacer mapping 
+*/
 #include <ros/ros.h>
 #include <limits>
 

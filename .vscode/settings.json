@@ -60,6 +60,9 @@
         "typeinfo": "cpp",
         "core": "cpp",
         "csignal": "cpp",
-        "numericaldiff": "cpp"
+        "numericaldiff": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "*.ipp": "cpp"
     }
 }

@@ -1,3 +1,10 @@
+/////////////////////////////77
+/*
+Este programa detecta los arucos en uuna imagen y calcula las velocidades del control servovisual
+solo es un programa de validacion no esta aplicado al proyecto de paneles y drones
+*/
+
+
 #include <ros/ros.h>
 #include <limits>
 #include <sensor_msgs/Image.h>

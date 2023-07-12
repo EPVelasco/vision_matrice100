@@ -1,3 +1,5 @@
+/*Este programa rota la nube de puntos que lee el sensor lidar livox en 180 grados */
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>

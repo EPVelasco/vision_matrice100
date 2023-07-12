@@ -1,3 +1,5 @@
+/*programa del control servovisual del dron, como entrada necesita una mascara de dos lineas paralelas que son los paneles solares
+este programa envia las velocidades de salida para el MPC*/
 #include <ros/ros.h>
 #include <limits>
 #include <sensor_msgs/Image.h>

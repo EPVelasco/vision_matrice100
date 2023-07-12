@@ -1,3 +1,7 @@
+/*
+Programa para hacer voxelizado a una nube de puntos, programa solo paa validacion de nubesde puntos
+*/
+
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_conversions/pcl_conversions.h>

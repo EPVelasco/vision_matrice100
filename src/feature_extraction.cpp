@@ -1,3 +1,8 @@
+/*
+Programa que extrae las caractersiticas del panel en el canal RGB lo que hace es filtrar medainte color los colores
+blancos, estos valores son ajustables desde el launch. Despues de esto estos puntos los aproxima a lineas rectas
+*/
+
 #include <ros/ros.h>
 #include <limits>
 #include <sensor_msgs/Image.h>
@@ -169,7 +174,7 @@ void callback(const ImageConstPtr& in_image)
       if (contour.size()==0)
         break;
       cv::Vec4f line;
-      cv::fitLine(contour, line, cv::DIST_L2, 0, 0.01, 0.01);
+      cv::fitLine(contour, line, cv::DIST_L1, 0, 0.01, 0.01);
       linesap.push_back(line); 
   }
 

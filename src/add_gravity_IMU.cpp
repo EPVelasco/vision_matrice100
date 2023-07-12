@@ -1,6 +1,14 @@
+/////////////////////////////////////////////////
+/*
+Este programa lo que hace es añadir un vector de gravedad a una IMU que este compensada la gravedad.
+Esto es necesario para programas que no consideran IMUs con compesacion de gravedad
+*/
+
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <Eigen/Dense>
+
+
 
 // Variables globales
 Eigen::Vector3d gravity_vector;
@@ -10,9 +18,7 @@ ros::Publisher new_imu_pub; // Declaración del publisher
 void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
 {
   // Crear una nueva IMU para publicar
-  sensor_msgs::Imu new_imu;
-
-  
+  sensor_msgs::Imu new_imu;  
 
   // Copiar los datos de orientación y velocidad lineal de la IMU original a la nueva IMU
   new_imu.orientation = msg->orientation;
@@ -45,7 +51,6 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr& msg)
   new_imu.linear_acceleration.z = az + gravity_vector.z();
 
   // Publicar la nueva IMU
-  // (asumiendo que tienes un publisher llamado "new_imu_pub" definido en tu nodo)
   new_imu_pub.publish(new_imu);
 }
 
