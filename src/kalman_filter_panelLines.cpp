@@ -51,10 +51,10 @@ float maxLineGap = 10;
 float minCan = 20;
 float maxCan = 50;
 float ang_t = 0;
-float area_filter = 500.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
+float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
 
-float hsv_v = 230;
+float hsv_v = 200;
 float hsv_s = 100;
 
 // Variables del filtrode kalman
@@ -101,9 +101,9 @@ std::tuple<cv::Vec4f, Eigen::MatrixXd> kalman_filter( Eigen::VectorXd l_hat, flo
   // Predicción del estado siguiente
   l_hat = A * l_hat;
 
-  P = A * P * A.transpose() + 0.0001 * Q;
+  P = A * P * A.transpose() + 1.0* Q;
   Eigen::MatrixXd var_m(4,4) ;
-  var_m = H * P * H.transpose() + 10.0 *R;
+  var_m = H * P * H.transpose() + 100.0 *R;
   // Actualización del estado y la covarianza
   K = P * H.transpose() * var_m.inverse();
 
@@ -289,10 +289,11 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
       float x  = line[2];
       float y  = line[3];
 
-      lc_l = line;
-      lc_r = line;
 
-      if (inicio_kalman && cont_line == 0){ // condicion para inicialiszar las varialbes del filtro de kalman
+
+      if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
+        lc_l = line;
+        lc_r = line;
 
         vec_lp_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3], 0, 0, 0, 0; // estados iniciales
         vec_lp_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3], 0, 0, 0, 0; // estados iniciales
@@ -312,11 +313,13 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
        }
       else{        
         if (cont_line == 0){
-          lp_l = T* (lc_l- l_pe_l);          
+          lc_l = line;
+          lp_l = (1/T)* (lc_l- l_pe_l);          
           vec_lp_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3], lp_l[0], lp_l[1], lp_l[2], lp_l[3];
         }
         else{
-          lp_r = T* (lc_r- l_pe_r);          
+          lc_r = line;
+          lp_r = (1/T)* (lc_r- l_pe_r);          
           vec_lp_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3], lp_r[0], lp_r[1], lp_r[2], lp_r[3];
         }
       }
@@ -347,6 +350,7 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
         cv::Point pt1_kalma_right(line_kalman_right[2] - 1000 * line_kalman_right[0], line_kalman_right[3] - 1000 * line_kalman_right[1]);
         cv::Point pt2_kalma_right(line_kalman_right[2] + 1000 * line_kalman_right[0], line_kalman_right[3] + 1000 * line_kalman_right[1]); 
         cv::line(outputImage_points, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
+
       }
      
       //Puntos de la linea sin filtrar

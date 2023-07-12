@@ -54,6 +54,7 @@ ros::Publisher path_pub;          // path coordinates
 ros::Publisher veldroneWorld_pub; // velocidades dron- munod
 ros::Publisher veldrone_pub;      // velocidades dron
 ros::Publisher time_pub;          // tiempo de ejecucion
+ros::Publisher err_servo_pub;     // errores del servovisual
 
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
@@ -546,15 +547,18 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     J_sal = J_r * J_theta * Jcam_robot;
 
     Eigen::MatrixXf r_theta(2,1);
-    
-    r_theta << lambda(0,0)* (0.0 - r), 
-               lambda(1,0)* (angle_desired - ang_theta );
 
-    float r_aux = (0.0 - r)/(imageWidth/2);
+    float err_r = 0.0 - r;
+    float err_theta = angle_desired - ang_theta  ;
+    
+    r_theta << lambda(0,0)* (err_r), 
+               lambda(1,0)* (err_theta);
+
+    float r_aux = (err_r)/(imageWidth/2);
 
     Eigen::MatrixXf r_th_norm(2,1);
     r_th_norm << lambda(0,0)* r_aux, 
-                 lambda(1,0)* (angle_desired - ang_theta );
+                 lambda(1,0)* (err_theta );
       
 
     // std::cout<<"Error norma: "<<r_th_norm.norm()<<std::endl;
@@ -692,9 +696,22 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   velCuerpoMundo_msgs.twist.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
   velCuerpoMundo_msgs.twist.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
 
+  veldroneWorld_pub.publish(velCuerpoMundo_msgs);
+
   // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
 
-  veldroneWorld_pub.publish(velCuerpoMundo_msgs);
+  // publicacion de los errores del servovisual en un topic tipo velocidad(solo es apra ver los errores)
+  geometry_msgs::TwistStamped  err_servo_msg;  
+
+  err_servo_msg.header.frame_id = "base_link";
+  err_servo_msg.header.stamp = in_mask->header.stamp + delay_ros;
+
+  err_servo_msg.twist.linear.x =  r_theta(0);    // errores de r no normalizado (0.0 -r)
+  err_servo_msg.twist.linear.y =  r_theta(1);    // errores de theta no normalizado (angulo_deseado th)
+  err_servo_msg.twist.linear.z =  r_th_norm(0);  //  normalizado
+  err_servo_msg.twist.angular.x = r_th_norm(1);  // errores de theta normalizado
+
+  err_servo_pub.publish(err_servo_msg);
     
   sensor_msgs::ImagePtr image_msg;
   image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
@@ -777,6 +794,7 @@ int main(int argc, char** argv)
   featuresRGB_pub = nh.advertise<sensor_msgs::Image>("/dji_sdk/visual_servoing/img_features", 10);
   veldrone_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_topic, 10);
   veldroneWorld_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_world_topic, 10);
+  err_servo_pub = nh.advertise<geometry_msgs::TwistStamped>("/dji_sdk/visual_servoing/errores", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/dji_sdk/visual_servoing/runtime", 10);  
    
   ros::spin();
