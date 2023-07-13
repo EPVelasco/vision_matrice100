@@ -25,7 +25,6 @@
 
 #include <nav_msgs/Odometry.h>
 
-#include "kalman.hpp"
 
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -486,6 +485,8 @@ int main(int argc, char** argv)
     Eigen::MatrixXd P_right(n, n); // Estimate error covariance
     double dt = 0.034;
         // kalman 
+
+
       A << 1, 0, dt, 0 
           ,0, 1, 0, 0
           ,0, 0, 1, dt
