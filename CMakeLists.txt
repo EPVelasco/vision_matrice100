@@ -59,7 +59,6 @@ include_directories(
 add_library(${PROJECT_NAME}
   #src/${PROJECT_NAME}/optimus_vision.cpp
   src/utils_lib.cpp
-  include/kalman.cpp
 )
 
 
@@ -110,7 +109,7 @@ target_link_libraries(lidar_to_dron_node
 
 )
 
-add_executable(kalman_lines_node src/kalman_filter_panelLines.cpp src/utils_lib.cpp include/kalman.cpp)
+add_executable(kalman_lines_node src/kalman_filter_panelLines.cpp src/utils_lib.cpp )
 target_link_libraries(kalman_lines_node
    ${catkin_LIBRARIES}
    ${OpenCV_LIBRARIES}

@@ -5,7 +5,6 @@
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/core/core.hpp>
-#include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <math.h>
@@ -25,6 +24,8 @@
 #include "../include/utils_lib.h"
 
 #include <nav_msgs/Odometry.h>
+
+#include "kalman.hpp"
 
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -71,69 +72,51 @@ cv::Vec4f l_pe_r(0.0f, 0.0f, 0.0f, 0.0f);
 cv::Vec4f l_pee_l(0.0f, 0.0f, 0.0f, 0.0f);
 cv::Vec4f l_pee_r(0.0f, 0.0f, 0.0f, 0.0f);
 
+int n = 4, m =2;
 
-// Inicialización de y matrices
-Eigen::MatrixXd A(8, 8), H(4, 8), Q(8, 8), R(4, 4), K(8, 4), P_left(8,8), P_right(8,8);;
 Eigen::MatrixXd vec_lp_l(8,1), vec_lp_r(8,1);
 bool inicio_kalman = true;
+bool init_kalman = true;
 
-std::tuple<cv::Vec4f, Eigen::MatrixXd> kalman_filter( Eigen::VectorXd l_hat, float T, Eigen::MatrixXd P){
-  Eigen::MatrixXd curr_state (4,1); // estados acutales
-  curr_state << l_hat[0], l_hat[1], l_hat[2], l_hat[3];
+// std::tuple<cv::Vec4f, Eigen::MatrixXd> kalman_filter( Eigen::VectorXd l_hat, float T, Eigen::MatrixXd P){
+//   Eigen::MatrixXd curr_state (4,1); // estados acutales
+//   curr_state << l_hat[0], l_hat[1], l_hat[2], l_hat[3];
 
-  A << 1, 0, 0, 0, T, 0, 0, 0
-      ,0, 1, 0, 0, 0, T, 0, 0
-      ,0, 0, 1, 0, 0, 0, T, 0
-      ,0, 0, 0, 1, 0, 0, 0, T
-      ,0, 0, 0, 0, 1, 0, 0, 0
-      ,0, 0, 0, 0, 0, 1, 0, 0
-      ,0, 0, 0, 0, 0, 0, 1, 0
-      ,0, 0, 0, 0, 0, 0, 0, 1;
 
-  H << 1, 0, 0, 0, 0, 0, 0, 0
-      ,0, 1, 0, 0, 0, 0, 0, 0
-      ,0, 0, 1, 0, 0, 0, 0, 0
-      ,0, 0, 0, 1, 0, 0, 0, 0;
 
-  Q << 1, 0, 0, 0, 0, 0, 0, 0
-      ,0, 1, 0, 0, 0, 0, 0, 0
-      ,0, 0, 1, 0, 0, 0, 0, 0
-      ,0, 0, 0, 1, 0, 0, 0, 0
-      ,0, 0, 0, 0, 1, 0, 0, 0
-      ,0, 0, 0, 0, 0, 1, 0, 0
-      ,0, 0, 0, 0, 0, 0, 1, 0
-      ,0, 0, 0, 0, 0, 0, 0, 1;
+//   // Predicción del estado siguiente
+//   l_hat = A * l_hat;
 
-  R << 1, 0, 0, 0,
-       0, 1, 0, 0,
-       0, 0, 1.0, 0,
-       0, 0, 0, 1.0;
+//   P = A * P * A.transpose() + 10.0* Q;
+//   Eigen::MatrixXd var_m(4,4) ;
+//   var_m = H * P * H.transpose() + 0.1*R;
+//   // Actualización del estado y la covarianza
+//   K = P * H.transpose() * var_m.inverse();
 
-  // Predicción del estado siguiente
-  l_hat = A * l_hat;
+//   l_hat = l_hat + K * (curr_state - H * l_hat);
+//   P = (Eigen::MatrixXd::Identity(8, 8) - K * H) * P;
 
-  P = A * P * A.transpose() + 10.0* Q;
-  Eigen::MatrixXd var_m(4,4) ;
-  var_m = H * P * H.transpose() + 0.1*R;
-  // Actualización del estado y la covarianza
-  K = P * H.transpose() * var_m.inverse();
+//   // envio los estados filtrados en forma de linea
+//   cv::Vec4f filterline;
+//   filterline[0] = l_hat[0];
+//   filterline[1] = l_hat[1];
+//   filterline[2] = l_hat[2];
+//   filterline[3] = l_hat[3];
 
-  l_hat = l_hat + K * (curr_state - H * l_hat);
-  P = (Eigen::MatrixXd::Identity(8, 8) - K * H) * P;
-
-  // envio los estados filtrados en forma de linea
-  cv::Vec4f filterline;
-  filterline[0] = l_hat[0];
-  filterline[1] = l_hat[1];
-  filterline[2] = l_hat[2];
-  filterline[3] = l_hat[3];
-
-return std::make_tuple(filterline,P);
-}
+// return std::make_tuple(filterline,P);
+// }
+// KalmanFilter kf_l;
+// KalmanFilter kf_r;
 
 // void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
 void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
 {
+
+  // if (init_kalman)
+  // {
+   
+  //   init_kalman = false;
+  // }
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
 
@@ -303,80 +286,69 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
       float x  = line[2];
       float y  = line[3];
 
+      // Eigen::VectorXd measure_l(m); 
+      // Eigen::VectorXd measure_r(m);
+
+      // if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
+      //   if (cont_line == 0){
+
+      //     measure_l << 0, 0;
+      //     kf_l.init(0, measure_l );
+      //   }
+      //   else{           
+      //     measure_r << 0, 0;
+      //     kf_r.init(0, measure_r);
+      //   }
+      // }
+                  
+      // else{        
+      //   if (cont_line == 0){
+      //     measure_l << double(line[0]),double(line[1]);
+      //     kf_l.update(measure_l);
+      //     // Eigen::VectorXd state_kalman_l(m);
+      //     // state_kalman_l = kf_l.state();
+
+      //     // cv::Point pt1_kalma_left(line[2] - 1000 * state_kalman_l[0], line[3] - 1000 * state_kalman_l[1]);
+      //     // cv::Point pt2_kalma_left(line[2] + 1000 * state_kalman_l[0], line[3] + 1000 * state_kalman_l[1]); 
+      //     // cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 5, cv::LINE_AA);
+
+      //   }
+      //   else{
+      //     // measure_r << line[0], line[1];
+      //     // kf_r.update(measure_r);      
+      //     // Eigen::VectorXd state_kalman_r(m);
+      //     // state_kalman_r = kf_r.state();   
+
+      //     // cv::Point pt1_kalma_right(line[2] - 1000 * state_kalman_r[0], line[3] - 1000 * state_kalman_r[1]);
+      //     // cv::Point pt2_kalma_right(line[2] + 1000 * state_kalman_r[0], line[3] + 1000 * state_kalman_r[1]); 
+      //     // cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 5, cv::LINE_AA);
+      //   }
+      // }
 
 
-      if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
-        lc_l = line;
-        lc_r = line;
-
-        vec_lp_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3], 0, 0, 0, 0; // estados iniciales
-        vec_lp_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3], 0, 0, 0, 0; // estados iniciales
-
-        P_left << 1, 0, 0, 0, 0, 0, 0, 0
-                 ,0, 1, 0, 0, 0, 0, 0, 0
-                 ,0, 0, 1, 0, 0, 0, 0, 0
-                 ,0, 0, 0, 1, 0, 0, 0, 0
-                 ,0, 0, 0, 0, 1, 0, 0, 0
-                 ,0, 0, 0, 0, 0, 1, 0, 0
-                 ,0, 0, 0, 0, 0, 0, 1, 0
-                 ,0, 0, 0, 0, 0, 0, 0, 1; 
-
-        P_right = P_left;
-        inicio_kalman = false;
-        l_pe_l = lc_l;
-        l_pe_r = lc_r;
-
-       }       
-      else{        
-        if (cont_line == 0){
-          lc_l = line;
-          lp_l = (1/T)* (lc_l- l_pe_l);          
-          vec_lp_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3], lp_l[0], lp_l[1], lp_l[2], lp_l[3];
-          
-          l_pee_l = l_pe_l;
-          l_pe_l = lc_l;
-          //lc_l = line;
-        }
-        else{
-          lc_r = line;
-          lp_r = (1/T)* (lc_r- l_pe_r);          
-          vec_lp_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3], lp_r[0], lp_r[1], lp_r[2], lp_r[3];
-
-          l_pee_r = l_pe_r;
-          l_pe_r = lc_r;
-          //lc_r = line;
-        }
-      }
-
-
-     
       
 
-      cv::Vec4f line_kalman_left(0,0,0,0);
-      cv::Vec4f line_kalman_right(0,0,0,0);
+      // cv::Vec4f line_kalman_left(0,0,0,0);
+      // cv::Vec4f line_kalman_right(0,0,0,0);
       
-      Eigen::MatrixXd outputP_left(8,8);
-      Eigen::MatrixXd outputP_right(8,8);
+      // Eigen::MatrixXd outputP_left(8,8);
+      // Eigen::MatrixXd outputP_right(8,8);
 
 
-      if (cont_line == 0){
-        std::tie(line_kalman_left, outputP_left)   = kalman_filter(vec_lp_l, T, P_left);
-        P_left  = outputP_left;
+      // if (cont_line == 0){
+      //  // std::tie(line_kalman_left, outputP_left)   = kalman_filter(vec_lp_l, T, P_left);
+      //  // P_left  = outputP_left;
 
-       //Puntos de la linea izquierda filtrada 
-        cv::Point pt1_kalma_left(line_kalman_left[2] - 100 * line_kalman_left[0], line_kalman_left[3] - 100 * line_kalman_left[1]);
-        cv::Point pt2_kalma_left(line_kalman_left[2] + 100 * line_kalman_left[0], line_kalman_left[3] + 100 * line_kalman_left[1]); 
-        cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 5, cv::LINE_AA);
-       }
-      else{
-        std::tie(line_kalman_right, outputP_right) = kalman_filter(vec_lp_r, T, P_right);
-        P_right = outputP_right;
-        //Puntos de la linea izquierda filtrada 
-        cv::Point pt1_kalma_right(line_kalman_right[2] - 100 * line_kalman_right[0], line_kalman_right[3] - 100 * line_kalman_right[1]);
-        cv::Point pt2_kalma_right(line_kalman_right[2] + 100 * line_kalman_right[0], line_kalman_right[3] + 100 * line_kalman_right[1]); 
-        cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 5, cv::LINE_AA);
+      //  //Puntos de la linea izquierda filtrada 
+         
+      //  }
+      // else{
+      //   std::tie(line_kalman_right, outputP_right) = kalman_filter(vec_lp_r, T, P_right);
+      //   P_right = outputP_right;
+      //   //Puntos de la linea izquierda filtrada 
+         
 
-      }
+      // }
      
       //Puntos de la linea sin filtrar
       cv::Point pt1_out_lin(x - 100 * vx, y - 100 * vy);
@@ -395,6 +367,8 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
       cont_line ++;
       
    }
+
+  inicio_kalman = false;
 
   ////////////////////////////////////////////////////////////
    
@@ -503,6 +477,49 @@ int main(int argc, char** argv)
 
   ros::init(argc, argv, "panelFeatures_kalman");
   ros::NodeHandle nh;  
+
+   Eigen::MatrixXd A(n, n); // System dynamics matrix
+    Eigen::MatrixXd C(m, n); // Output matrix
+    Eigen::MatrixXd Q(n, n); // Process noise covariance
+    Eigen::MatrixXd R(m, m); // Measurement noise covariance
+    Eigen::MatrixXd P_left(n, n); // Estimate error covariance
+    Eigen::MatrixXd P_right(n, n); // Estimate error covariance
+    double dt = 0.034;
+        // kalman 
+      A << 1, 0, dt, 0 
+          ,0, 1, 0, 0
+          ,0, 0, 1, dt
+          ,0, 0, 0, 1;
+
+      C << 1, 0, 0, 0 
+          ,0, 1, 0, 0;
+
+      Q << 1, 0, 0, 0 
+          ,0, 1, 0, 0
+          ,0, 0, 1, 0
+          ,0, 0, 0, 1;
+
+      R << 1, 0, 
+            0, 1;
+
+      P_left<<  1, 0, 0, 0 
+              ,0, 1, 0, 0
+              ,0, 0, 1, 0
+              ,0, 0, 0, 1;
+
+      P_right<< 1, 0, 0, 0 
+              ,0, 1, 0, 0
+              ,0, 0, 1, 0
+              ,0, 0, 0, 1;
+
+    KalmanFilter kf_l(dt,A, C, Q, R, P_left); 
+    KalmanFilter kf_r(dt,A, C, Q, R, P_right); 
+    Eigen::VectorXd initial_s;
+    initial_s << 0, 0;
+     kf_l.init(0, initial_s );
+     Eigen::VectorXd measure_l;
+     measure_l << 1, 2;
+     kf_r.update(measure_l);  
 
   // parametros para imagen a color
 
