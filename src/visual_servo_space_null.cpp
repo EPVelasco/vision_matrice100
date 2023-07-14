@@ -555,11 +555,10 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
                lambda(1,0)* (err_theta);
 
     float r_aux = (err_r)/(imageWidth/2);
-    float theta_aux = (err_theta) / 0.785398; // angulo normalizado divido para el angulo maximo  de la linea detectada que es 45 grados 
 
     Eigen::MatrixXf r_th_norm(2,1);
     r_th_norm << lambda(0,0)* r_aux, 
-                 lambda(1,0)* (theta_aux );
+                 lambda(1,0)* (err_theta );
       
 
     // std::cout<<"Error norma: "<<r_th_norm.norm()<<std::endl;
