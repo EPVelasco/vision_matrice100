@@ -141,48 +141,49 @@ std::tuple<Eigen::VectorXd, Eigen::MatrixXd> kalman_filter(Eigen::VectorXd curr_
 return std::make_tuple(x_estimate,P_curr);
 }
 
-// void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
-void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
+//void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
+void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
 {
 
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
   ///////////////////////Odometria del dron
 
-  // Obtener la orientación del mensaje de odometría como un objeto Quaternion
-  tf::Quaternion q;
-  tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
+  // // Obtener la orientación del mensaje de odometría como un objeto Quaternion
+  // tf::Quaternion q;
+  // tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
 
-  // Convertir el quaternion a una matriz de rotación
-  tf::Matrix3x3 m(q);
-  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
+  // // Convertir el quaternion a una matriz de rotación
+  // tf::Matrix3x3 m(q);
+  // // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
 
-  Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
-  Eigen::VectorXd  vel_world(6), vel_body(6);
-  geometry_msgs::Twist velocity = odom_msg->twist.twist;
+  // Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
+  // Eigen::VectorXd  vel_world(6), vel_body(6);
+  // geometry_msgs::Twist velocity = odom_msg->twist.twist;
 
 
-  vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
+  // vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
   
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            R_odom(i, j) = m[i][j];
-        }
-    }
-    // T_odom(0, 3) = odom_msg->pose.pose.position.x;
-    // T_odom(1, 3) = odom_msg->pose.pose.position.y;
-    // T_odom(2, 3) = odom_msg->pose.pose.position.z;
+  //   for (int i = 0; i < 3; i++) {
+  //       for (int j = 0; j < 3; j++) {
+  //           R_odom(i, j) = m[i][j];
+  //       }
+  //   }
+  //   // T_odom(0, 3) = odom_msg->pose.pose.position.x;
+  //   // T_odom(1, 3) = odom_msg->pose.pose.position.y;
+  //   // T_odom(2, 3) = odom_msg->pose.pose.position.z;
 
-     Eigen::MatrixXd Rt(6,6);
-     Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
-          ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
-          ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
-          ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
-          ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
-          ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
+  //    Eigen::MatrixXd Rt(6,6);
+  //    Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
+  //         ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
+  //         ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
+  //         ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
+  //         ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
+  //         ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
 
-  // vel_body = Rt.transpose() * vel_world;
-  vel_body =  vel_world;
+  // // vel_body = Rt.transpose() * vel_world;
+  // vel_body =  vel_world;
 
 
 
@@ -358,78 +359,78 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
 
 
 
-      if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
+      // if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
          
-        P_left << 1, 0, 0, 0
-                 ,0, 1, 0, 0
-                 ,0, 0, 1, 0
-                 ,0, 0, 0, 1; 
-        P_right = P_left;
+      //   P_left << 1, 0, 0, 0
+      //            ,0, 1, 0, 0
+      //            ,0, 0, 1, 0
+      //            ,0, 0, 0, 1; 
+      //   P_right = P_left;
 
-        if (cont_line == 0){
-          lc_l = line;
-          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3]; // estados iniciales
-          x_estimate_l   = curr_l;
-        }
-        else{
-          lc_r = line;        
-          curr_r << lc_r[0], lc_r[1], lc_l[2], lc_l[3]; // estados iniciales
-          x_estimate_r   = curr_r;
-        }              
+      //   if (cont_line == 0){
+      //     lc_l = line;
+      //     curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3]; // estados iniciales
+      //     x_estimate_l   = curr_l;
+      //   }
+      //   else{
+      //     lc_r = line;        
+      //     curr_r << lc_r[0], lc_r[1], lc_l[2], lc_l[3]; // estados iniciales
+      //     x_estimate_r   = curr_r;
+      //   }              
         
 
-       }
+      //  }
 
-      else{   
+      // else{   
 
-        if (cont_line == 0){
-          lc_l = line;   
-          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3];
+      //   if (cont_line == 0){
+      //     lc_l = line;   
+      //     curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3];
           
-          // l_pee_l = l_pe_l;
-          // l_pe_l = lc_l;
-          //lc_l = line;
-        }
-        else{
-          lc_r = line;  
-          curr_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3];
+      //     // l_pee_l = l_pe_l;
+      //     // l_pe_l = lc_l;
+      //     //lc_l = line;
+      //   }
+      //   else{
+      //     lc_r = line;  
+      //     curr_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3];
 
-          // l_pee_r = l_pe_r;
-          // l_pe_r = lc_r;
-          //lc_r = line;
-        }
-      }        
+      //     // l_pee_r = l_pe_r;
+      //     // l_pe_r = lc_r;
+      //     //lc_r = line;
+      //   }
+      // }        
 
-      Eigen::VectorXd line_kalman_left(4);
-      Eigen::VectorXd line_kalman_right(4);
+      // Eigen::VectorXd line_kalman_left(4);
+      // Eigen::VectorXd line_kalman_right(4);
 
-      Eigen::MatrixXd outputP_left(4,4);
-      Eigen::MatrixXd outputP_right(4,4);
+      // Eigen::MatrixXd outputP_left(4,4);
+      // Eigen::MatrixXd outputP_right(4,4);
       
-      if (kalman_bool){
-        if (cont_line == 0){
-          std::tie(line_kalman_left, outputP_left)   = kalman_filter(curr_l,x_estimate_l, T, P_left, vel_body);
-          P_left  = outputP_left;
-          x_estimate_l = line_kalman_left;
+      // if (kalman_bool){
+      //   if (cont_line == 0){
+      //     std::tie(line_kalman_left, outputP_left)   = kalman_filter(curr_l,x_estimate_l, T, P_left, vel_body);
+      //     P_left  = outputP_left;
+      //     x_estimate_l = line_kalman_left;
 
-        //Puntos de la linea izquierda filtrada 
-          cv::Point pt1_kalma_left(line[2] - 1000 * x_estimate_l[0], line[3] - 1000 * x_estimate_l[1]);
-          cv::Point pt2_kalma_left(line[2] + 1000 * x_estimate_l[0], line[3] + 1000 * x_estimate_l[1]); 
-          cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
-          cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        }
-        else{
-          std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, T, P_right, vel_body);
-          P_right = outputP_right;
-          x_estimate_r = line_kalman_right;
-          //Puntos de la linea izquierda filtrada 
-          cv::Point pt1_kalma_right(line[2] - 1000 * x_estimate_r[0], line[3] - 1000 * x_estimate_r[1]);
-          cv::Point pt2_kalma_right(line[2] + 1000 * x_estimate_r[0], line[3] + 1000 * x_estimate_r[1]); 
-          cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
-          cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+      //   //Puntos de la linea izquierda filtrada 
+      //     cv::Point pt1_kalma_left(line[2] - 1000 * x_estimate_l[0], line[3] - 1000 * x_estimate_l[1]);
+      //     cv::Point pt2_kalma_left(line[2] + 1000 * x_estimate_l[0], line[3] + 1000 * x_estimate_l[1]); 
+      //     cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
+      //     cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+      //   }
+      //   else{
+      //     std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, T, P_right, vel_body);
+      //     P_right = outputP_right;
+      //     x_estimate_r = line_kalman_right;
+      //     //Puntos de la linea izquierda filtrada 
+      //     cv::Point pt1_kalma_right(line[2] - 1000 * x_estimate_r[0], line[3] - 1000 * x_estimate_r[1]);
+      //     cv::Point pt2_kalma_right(line[2] + 1000 * x_estimate_r[0], line[3] + 1000 * x_estimate_r[1]); 
+      //     cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
+      //     cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
-        }
-      }
+      //   }
+      // }
      
       //Puntos de la linea sin filtrar
       cv::Point pt1_out_lin(x - 1000 * vx, y - 1000 * vy);
@@ -517,17 +518,19 @@ int main(int argc, char** argv)
   nh.getParam("/rgb_Topic", rgb_Topic);
   nh.getParam("/depth_Topic", depth_Topic);
   nh.getParam("/odom_Topic", odom_Topic);
-  // message_filters::Subscriber<CompressedImage>  rgb_sub(nh, rgb_Topic , 10);
-  // message_filters::Subscriber<CompressedImage>  depth_sub(nh, depth_Topic, 10);
-  // typedef sync_policies::ApproximateTime<CompressedImage, CompressedImage> MySyncPolicy;
 
   message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
   message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
-  typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
+  sync.registerCallback(boost::bind(&callback, _1, _2 ));
 
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
+  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
+  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
+  // message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
+  // typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
+  // sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
