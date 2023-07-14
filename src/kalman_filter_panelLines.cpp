@@ -41,6 +41,7 @@ ros::Publisher panel_LinesFeatures_pub; // validacion de color
 ros::Publisher lines_features_pub; // publico los parametros encontrado de las lineas izquierda y derecha
 ros::Publisher time_pub;          // tiempo de ejecucion
 
+
 // topics a suscribirse del nodo
 std::string rgb_Topic   = "/camera/color/image_raw";
 std::string depth_Topic = "/camera/aligned_depth_to_color/image_raw";
@@ -49,6 +50,7 @@ std::string odom_Topic = "/dji_sdk/odometry";
 
 float area_filter = 600.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
+bool kalman_bool = false; // variable para activar o desactivar el filtro de kalman
 
 float hsv_v = 200;
 float hsv_s = 100;
@@ -403,28 +405,30 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
 
       Eigen::MatrixXd outputP_left(4,4);
       Eigen::MatrixXd outputP_right(4,4);
+      
+      if (kalman_bool){
+        if (cont_line == 0){
+          std::tie(line_kalman_left, outputP_left)   = kalman_filter(curr_l,x_estimate_l, T, P_left, vel_body);
+          P_left  = outputP_left;
+          x_estimate_l = line_kalman_left;
 
-      if (cont_line == 0){
-        std::tie(line_kalman_left, outputP_left)   = kalman_filter(curr_l,x_estimate_l, T, P_left, vel_body);
-        P_left  = outputP_left;
-        x_estimate_l = line_kalman_left;
-
-       //Puntos de la linea izquierda filtrada 
-        cv::Point pt1_kalma_left(line[2] - 1000 * x_estimate_l[0], line[3] - 1000 * x_estimate_l[1]);
-        cv::Point pt2_kalma_left(line[2] + 1000 * x_estimate_l[0], line[3] + 1000 * x_estimate_l[1]); 
-        cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
-        cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-       }
-      else{
-        std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, T, P_right, vel_body);
-        P_right = outputP_right;
-        x_estimate_r = line_kalman_right;
         //Puntos de la linea izquierda filtrada 
-        cv::Point pt1_kalma_right(line[2] - 1000 * x_estimate_r[0], line[3] - 1000 * x_estimate_r[1]);
-        cv::Point pt2_kalma_right(line[2] + 1000 * x_estimate_r[0], line[3] + 1000 * x_estimate_r[1]); 
-        cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
-        cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+          cv::Point pt1_kalma_left(line[2] - 1000 * x_estimate_l[0], line[3] - 1000 * x_estimate_l[1]);
+          cv::Point pt2_kalma_left(line[2] + 1000 * x_estimate_l[0], line[3] + 1000 * x_estimate_l[1]); 
+          cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
+          cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+        }
+        else{
+          std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, T, P_right, vel_body);
+          P_right = outputP_right;
+          x_estimate_r = line_kalman_right;
+          //Puntos de la linea izquierda filtrada 
+          cv::Point pt1_kalma_right(line[2] - 1000 * x_estimate_r[0], line[3] - 1000 * x_estimate_r[1]);
+          cv::Point pt2_kalma_right(line[2] + 1000 * x_estimate_r[0], line[3] + 1000 * x_estimate_r[1]); 
+          cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
+          cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
+        }
       }
      
       //Puntos de la linea sin filtrar
@@ -432,12 +436,13 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
       cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
 
 
-      float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
+      // float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
 
      // if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
-        //cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+      if(kalman_bool == false)
+        cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
 
-        cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+      cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
       //}
  
 
@@ -449,8 +454,6 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
   inicio_kalman = false;
 
   ///////////////////////////////////////////////////////// fin filtro kalman      
-
-
 
   
   ros::Time end_time = ros::Time::now();  
@@ -483,18 +486,18 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
   time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
   time_pub.publish(time_msg);  // Publicar el mensaje
 
-  nav_msgs::Odometry lines_features_msg;
-  lines_features_msg.header.frame_id = "base_link";
-  lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
-  lines_features_msg.pose.pose.orientation.x = lc_l(0);
-  lines_features_msg.pose.pose.orientation.y = lc_l(1);
-  lines_features_msg.pose.pose.orientation.z = lc_l(2);
-  lines_features_msg.pose.pose.orientation.w = lc_l(3);
-  lines_features_msg.pose.pose.position.x = lc_r(0);
-  lines_features_msg.pose.pose.position.y = lc_r(1);
-  lines_features_msg.pose.pose.position.z = lc_r(2);
-  lines_features_msg.twist.twist.linear.x = lc_r(3);
-  lines_features_pub.publish(lines_features_msg);
+  // nav_msgs::Odometry lines_features_msg;
+  // lines_features_msg.header.frame_id = "base_link";
+  // lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
+  // lines_features_msg.pose.pose.orientation.x = lc_l(0);
+  // lines_features_msg.pose.pose.orientation.y = lc_l(1);
+  // lines_features_msg.pose.pose.orientation.z = lc_l(2);
+  // lines_features_msg.pose.pose.orientation.w = lc_l(3);
+  // lines_features_msg.pose.pose.position.x = lc_r(0);
+  // lines_features_msg.pose.pose.position.y = lc_r(1);
+  // lines_features_msg.pose.pose.position.z = lc_r(2);
+  // lines_features_msg.twist.twist.linear.x = lc_r(3);
+  // lines_features_pub.publish(lines_features_msg);
 
 }
 
@@ -528,7 +531,7 @@ int main(int argc, char** argv)
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
-  lines_features_pub  = nh.advertise<nav_msgs::Odometry>("/panel/image/lines_features", 10);
+  // lines_features_pub  = nh.advertise<nav_msgs::Odometry>("/panel/image/lines_features", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/panel/image/runtime", 10);  
 
 
