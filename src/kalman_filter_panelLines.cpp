@@ -306,22 +306,23 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_right}, 0, cv::Scalar(0, 0, 255), 1);
 
   /////////////////////////////////////////////////// Inicio  de Filtrado de la imagen depth //////////////////////////////////////////
-  cv::Mat depthImage = cv_depthCam->image;
-  cv::Mat depthValues;
-  depthImage.convertTo(depthValues, CV_16U);
+ 
+  // cv::Mat depthImage = cv_depthCam->image;
+  // cv::Mat depthValues;
+  // depthImage.convertTo(depthValues, CV_16U);
 
 
-  // llamar a la función y guardar los resultados en dos objetos std::vector<cv::Point>
-  auto [puntos_1, puntos_2] = processDepth(depthValues);
+  // // llamar a la función y guardar los resultados en dos objetos std::vector<cv::Point>
+  // auto [puntos_1, puntos_2] = processDepth(depthValues);
 
 
-  contour_left.insert(contour_left.end(), puntos_1.begin(), puntos_1.end());
-  contour_right.insert(contour_right.end(), puntos_2.begin(), puntos_2.end());
+  // contour_left.insert(contour_left.end(), puntos_1.begin(), puntos_1.end());
+  // contour_right.insert(contour_right.end(), puntos_2.begin(), puntos_2.end());
 
-  for (const auto& point : contour_left) 
-        cv::circle(Image_lines, cv::Point(point.x, point.y), 2, cv::Scalar(0,0,0), -1);
-  for (const auto& point : contour_right) 
-        cv::circle(Image_lines, cv::Point(point.x, point.y), 2, cv::Scalar(0,0,0), -1);
+  // for (const auto& point : contour_left) 
+  //       cv::circle(Image_lines, cv::Point(point.x, point.y), 2, cv::Scalar(0,0,0), -1);
+  // for (const auto& point : contour_right) 
+  //       cv::circle(Image_lines, cv::Point(point.x, point.y), 2, cv::Scalar(0,0,0), -1);
 
    std::vector<std::vector<cv::Point>> contours_2;
    contours_2.push_back(contour_left);  
