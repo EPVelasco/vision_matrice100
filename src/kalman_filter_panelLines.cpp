@@ -522,7 +522,7 @@ int main(int argc, char** argv)
   message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
   message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
   typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), rgb_sub, depth_sub, odom_sub);
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
   sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
