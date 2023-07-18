@@ -5,6 +5,7 @@
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/image_encodings.h>
 #include <opencv2/core/core.hpp>
+#include <iostream>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <math.h>
@@ -24,7 +25,7 @@
 #include "../include/utils_lib.h"
 
 #include <nav_msgs/Odometry.h>
-
+#include <tf/transform_datatypes.h>
 
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -36,26 +37,20 @@ using namespace message_filters;
 
 //Publisher
 ros::Publisher pub_img_out;   // publish image mask
-ros::Publisher time_pub;      // tiempo de ejecucion
 ros::Publisher panel_LinesFeatures_pub; // validacion de color
 ros::Publisher lines_features_pub; // publico los parametros encontrado de las lineas izquierda y derecha
+ros::Publisher time_pub;          // tiempo de ejecucion
+
 
 // topics a suscribirse del nodo
 std::string rgb_Topic   = "/camera/color/image_raw";
 std::string depth_Topic = "/camera/aligned_depth_to_color/image_raw";
+std::string odom_Topic = "/dji_sdk/odometry";
 
 
-
-float rho = 1;
-float theta = 90;
-float threshold = 50;
-float minLineLen = 50;
-float maxLineGap = 10;
-float minCan = 20;
-float maxCan = 50;
-float ang_t = 0;
 float area_filter = 600.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
+bool kalman_bool = true; // variable para activar o desactivar el filtro de kalman
 
 float hsv_v = 200;
 float hsv_s = 100;
@@ -71,53 +66,109 @@ cv::Vec4f l_pe_r(0.0f, 0.0f, 0.0f, 0.0f);
 cv::Vec4f l_pee_l(0.0f, 0.0f, 0.0f, 0.0f);
 cv::Vec4f l_pee_r(0.0f, 0.0f, 0.0f, 0.0f);
 
-int n = 4, m =2;
 
-Eigen::MatrixXd vec_lp_l(8,1), vec_lp_r(8,1);
+// Inicialización de y matrices
+Eigen::MatrixXd A(4, 4), H(4, 4), Q(4,4), R(4, 4), K(4, 4), P_left(4,4), P_right(4,4);;
+Eigen::VectorXd x_estimate_l(4), x_estimate_r(4);
+Eigen::VectorXd curr_l(4), curr_r(4);
 bool inicio_kalman = true;
-bool init_kalman = true;
 
-// std::tuple<cv::Vec4f, Eigen::MatrixXd> kalman_filter( Eigen::VectorXd l_hat, float T, Eigen::MatrixXd P){
-//   Eigen::MatrixXd curr_state (4,1); // estados acutales
-//   curr_state << l_hat[0], l_hat[1], l_hat[2], l_hat[3];
+std::tuple<Eigen::VectorXd, Eigen::MatrixXd> kalman_filter(Eigen::VectorXd curr_state, Eigen::VectorXd x_estimate_1, Eigen::MatrixXd P_k_1, Eigen::VectorXd vel_body){
+  Eigen::MatrixXd x_estimate (4,1);
+  Eigen::MatrixXd x_es (4,1);
+  Eigen::MatrixXd P(4,4); 
+  Eigen::MatrixXd P_curr(4,4); 
+  Eigen::MatrixXd B(4,6);
 
+  A <<  1.0009, -0.0000,  0.0006, -0.0008
+      , 0.0055,  0.9999, -0.0052,  0.0035
+      , 0.0140,  0.0002,  0.9862,  0.0092
+      ,-0.0150,  0.0001,  0.0261,  0.9781;
+  
+  B << -0.9638   , 8.9483   , 0.0896   ,-0.1520  , 0.0094   , 0.0040
+      , 0.7797   ,-6.4889   , 0.0767   ,-0.3674  , 0.0065   ,-0.1636
+      , 0.3306   ,-4.1860   , 0.6446   , 0.0237  ,-0.0293   , 0.0055
+      ,-1.7365   ,16.9488   ,-0.6440   ,-0.0352  , 0.0546   , 0.0209;
 
+  H << 1, 0, 0, 0
+      ,0, 1, 0, 0
+      ,0, 0, 1, 0
+      ,0, 0, 0, 1;
 
-//   // Predicción del estado siguiente
-//   l_hat = A * l_hat;
+  Q << 1, 0, 0, 0
+      ,0, 1, 0, 0
+      ,0, 0, 1, 0
+      ,0, 0, 0, 1 ;
 
-//   P = A * P * A.transpose() + 10.0* Q;
-//   Eigen::MatrixXd var_m(4,4) ;
-//   var_m = H * P * H.transpose() + 0.1*R;
-//   // Actualización del estado y la covarianza
-//   K = P * H.transpose() * var_m.inverse();
+  R << 10, 0, 0, 0
+      ,0, 10, 0, 0
+      ,0, 0, 100, 0
+      ,0, 0, 0, 100 ;
 
-//   l_hat = l_hat + K * (curr_state - H * l_hat);
-//   P = (Eigen::MatrixXd::Identity(8, 8) - K * H) * P;
+  // filtro de Kalman
+  x_es = A * x_estimate_1 + B * vel_body; // aqui debo sumar B
+  P = A * P_k_1 * A.transpose() + 100.0* Q;  
 
-//   // envio los estados filtrados en forma de linea
-//   cv::Vec4f filterline;
-//   filterline[0] = l_hat[0];
-//   filterline[1] = l_hat[1];
-//   filterline[2] = l_hat[2];
-//   filterline[3] = l_hat[3];
+  // // Estimacion
+  Eigen::MatrixXd var_m(4,4) ;
+  var_m = H * P * H.transpose() + 0.01 *R;
 
-// return std::make_tuple(filterline,P);
-// }
-// KalmanFilter kf_l;
-// KalmanFilter kf_r;
+  K = P * H.transpose() * var_m.inverse();
+  x_estimate = x_es + K * (curr_state - H * x_es);
 
-// void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
-void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+  // actualizacion de P
+  P_curr = (Eigen::MatrixXd::Identity(4, 4) - K * H) * P;
+
+return std::make_tuple(x_estimate,P_curr);
+}
+
+//void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
+//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
 {
 
-  // if (init_kalman)
-  // {
-   
-  //   init_kalman = false;
-  // }
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
+  ///////////////////////Odometria del dron
+
+  // Obtener la orientación del mensaje de odometría como un objeto Quaternion
+  tf::Quaternion q;
+  tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
+
+  // Convertir el quaternion a una matriz de rotación
+  tf::Matrix3x3 m(q);
+  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
+
+  Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
+  Eigen::VectorXd  vel_world(6), vel_body(6);
+  geometry_msgs::Twist velocity = odom_msg->twist.twist;
+
+
+  vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
+  
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            R_odom(i, j) = m[i][j];
+        }
+    }
+    // T_odom(0, 3) = odom_msg->pose.pose.position.x;
+    // T_odom(1, 3) = odom_msg->pose.pose.position.y;
+    // T_odom(2, 3) = odom_msg->pose.pose.position.z;
+
+     Eigen::MatrixXd Rt(6,6);
+     Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
+          ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
+          ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
+          ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
+          ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
+          ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
+
+  // vel_body = Rt.transpose() * vel_world;
+  vel_body =  vel_world;
+
+
+
+  /////////////////////////////////////////////
 
   cv_bridge::CvImagePtr cv_rgbCam, cv_depthCam;
   try
@@ -228,14 +279,15 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
 
  
   //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_left}, 0, cv::Scalar(0, 255, 0), 1);
-  for (const auto& point : contour_left) 
-        cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
-  for (const auto& point : contour_right) 
-        cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
+  // for (const auto& point : contour_left) 
+  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
+  // for (const auto& point : contour_right) 
+  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
 
   //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_right}, 0, cv::Scalar(0, 0, 255), 1);
 
   /////////////////////////////////////////////////// Inicio  de Filtrado de la imagen depth //////////////////////////////////////////
+ 
   cv::Mat depthImage = cv_depthCam->image;
   cv::Mat depthValues;
   depthImage.convertTo(depthValues, CV_16U);
@@ -248,14 +300,16 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   contour_left.insert(contour_left.end(), puntos_1.begin(), puntos_1.end());
   contour_right.insert(contour_right.end(), puntos_2.begin(), puntos_2.end());
 
-  for (const auto& point : puntos_1) 
-        cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
-  for (const auto& point : puntos_2) 
-        cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
+  for (const auto& point : contour_left) 
+        cv::circle(Image_lines, cv::Point(point.x, point.y), 1, cv::Scalar(0,0,0), -1);
+  for (const auto& point : contour_right) 
+        cv::circle(Image_lines, cv::Point(point.x, point.y), 1, cv::Scalar(0,0,0), -1);
 
    std::vector<std::vector<cv::Point>> contours_2;
    contours_2.push_back(contour_left);  
    contours_2.push_back(contour_right);
+
+
 
   /////////////////////////////////////////////////// Fin de flitrado de imagen depth /////////////////////////////////////////////////
   ///////////////////////////////////////////////////// Inicio del filtro de kalman/////////////////////////////
@@ -278,87 +332,100 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
       if (contour.size()==0)
         break;
       cv::Vec4f line;
-      cv::fitLine(contour, line, cv::DIST_L1, 0, 0.01, 0.01);
+      cv::fitLine(contour, line, cv::DIST_L1, 0, 0.001, 0.01);
 
       float vx = line[0];
       float vy = line[1];
       float x  = line[2];
       float y  = line[3];
 
-      // Eigen::VectorXd measure_l(m); 
-      // Eigen::VectorXd measure_r(m);
-
-      // if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
-      //   if (cont_line == 0){
-
-      //     measure_l << 0, 0;
-      //     kf_l.init(0, measure_l );
-      //   }
-      //   else{           
-      //     measure_r << 0, 0;
-      //     kf_r.init(0, measure_r);
-      //   }
-      // }
-                  
-      // else{        
-      //   if (cont_line == 0){
-      //     measure_l << double(line[0]),double(line[1]);
-      //     kf_l.update(measure_l);
-      //     // Eigen::VectorXd state_kalman_l(m);
-      //     // state_kalman_l = kf_l.state();
-
-      //     // cv::Point pt1_kalma_left(line[2] - 1000 * state_kalman_l[0], line[3] - 1000 * state_kalman_l[1]);
-      //     // cv::Point pt2_kalma_left(line[2] + 1000 * state_kalman_l[0], line[3] + 1000 * state_kalman_l[1]); 
-      //     // cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 5, cv::LINE_AA);
-
-      //   }
-      //   else{
-      //     // measure_r << line[0], line[1];
-      //     // kf_r.update(measure_r);      
-      //     // Eigen::VectorXd state_kalman_r(m);
-      //     // state_kalman_r = kf_r.state();   
-
-      //     // cv::Point pt1_kalma_right(line[2] - 1000 * state_kalman_r[0], line[3] - 1000 * state_kalman_r[1]);
-      //     // cv::Point pt2_kalma_right(line[2] + 1000 * state_kalman_r[0], line[3] + 1000 * state_kalman_r[1]); 
-      //     // cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 5, cv::LINE_AA);
-      //   }
-      // }
 
 
-      
-
-      // cv::Vec4f line_kalman_left(0,0,0,0);
-      // cv::Vec4f line_kalman_right(0,0,0,0);
-      
-      // Eigen::MatrixXd outputP_left(8,8);
-      // Eigen::MatrixXd outputP_right(8,8);
-
-
-      // if (cont_line == 0){
-      //  // std::tie(line_kalman_left, outputP_left)   = kalman_filter(vec_lp_l, T, P_left);
-      //  // P_left  = outputP_left;
-
-      //  //Puntos de la linea izquierda filtrada 
+      if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
          
-      //  }
-      // else{
-      //   std::tie(line_kalman_right, outputP_right) = kalman_filter(vec_lp_r, T, P_right);
-      //   P_right = outputP_right;
-      //   //Puntos de la linea izquierda filtrada 
-         
+        P_left << 1, 0, 0, 0
+                 ,0, 1, 0, 0
+                 ,0, 0, 1, 0
+                 ,0, 0, 0, 1; 
+        P_right = P_left;
 
-      // }
+        if (cont_line == 0){
+          lc_l = line;
+          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3]; // estados iniciales
+          x_estimate_l   = curr_l;
+        }
+        else{
+          lc_r = line;        
+          curr_r << lc_r[0], lc_r[1], lc_l[2], lc_l[3]; // estados iniciales
+          x_estimate_r   = curr_r;
+        }              
+        
+
+       }
+
+      else{   
+
+        if (cont_line == 0){
+          lc_l = line;   
+          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3];
+          
+          // l_pee_l = l_pe_l;
+          // l_pe_l = lc_l;
+          //lc_l = line;
+        }
+        else{
+          lc_r = line;  
+          curr_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3];
+
+          // l_pee_r = l_pe_r;
+          // l_pe_r = lc_r;
+          //lc_r = line;
+        }
+      }        
+
+      Eigen::VectorXd line_kalman_left(4);
+      Eigen::VectorXd line_kalman_right(4);
+
+      Eigen::MatrixXd outputP_left(4,4);
+      Eigen::MatrixXd outputP_right(4,4);
+      
+      if (kalman_bool){
+        if (cont_line == 0){
+          std::tie(line_kalman_left, outputP_left)   = kalman_filter(curr_l,x_estimate_l, P_left, vel_body);
+          P_left  = outputP_left;
+          x_estimate_l = line_kalman_left;
+
+        //Puntos de la linea izquierda filtrada 
+          cv::Point pt1_kalma_left(x_estimate_l[2] - 1000 * x_estimate_l[0], x_estimate_l[3] - 1000 * x_estimate_l[1]);
+          cv::Point pt2_kalma_left(x_estimate_l[2] + 1000 * x_estimate_l[0], x_estimate_l[3] + 1000 * x_estimate_l[1]); 
+          cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
+          cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+        }
+        else{
+          std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, P_right, vel_body);
+          P_right = outputP_right;
+          x_estimate_r = line_kalman_right;
+          //Puntos de la linea izquierda filtrada 
+          cv::Point pt1_kalma_right(x_estimate_r[2] - 1000 * x_estimate_r[0], x_estimate_r[3] - 1000 * x_estimate_r[1]);
+          cv::Point pt2_kalma_right(x_estimate_r[2] + 1000 * x_estimate_r[0], x_estimate_r[3] + 1000 * x_estimate_r[1]); 
+          cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
+          cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+
+        }
+      }
      
       //Puntos de la linea sin filtrar
-      cv::Point pt1_out_lin(x - 100 * vx, y - 100 * vy);
-      cv::Point pt2_out_lin(x + 100 * vx, y + 100 * vy); 
+      cv::Point pt1_out_lin(x - 1000 * vx, y - 1000 * vy);
+      cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
 
 
-      float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
+      // float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
 
      // if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
+      if(kalman_bool == false)
         cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+
+     // cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
       //}
  
 
@@ -369,58 +436,7 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
 
   inicio_kalman = false;
 
-  ////////////////////////////////////////////////////////////
-   
-
-
-  // A << 1, 0,  t, 0,
-  //       0, 1, 0, 0,
-  //       0, 0, 1, t,
-  //       0, 0, 0, 1;
-
-  // H << 1, 0, 0, 0,
-  //       0, 1, 0, 0;
-
-  // Q = Eigen::MatrixXd::Identity(4, 4); // Covarianza del proceso
-
-  // R << 100, 0,
-  //       0, 100; // Covarianza de la medición
-
-  // // Predicción del estado siguiente
-
-  // x_hat = A * x_hat;
-  // P = A * P * A.transpose() + Q;
-
-  // // Actualización del estado y la covarianza
-  // K = P * H.transpose() / (H * P * H.transpose() + R);
-
-  // m_actual.push_back(coefficients(0));
-  // b_actual.push_back(coefficients(1));
-
-  // if (k > 0) {
-  //     m_p.push_back((m_actual[k] - m_anterior[k]) / T);
-  //     b_p.push_back((b_actual[k] - b_anterior[k]) / T);
-  // } else {
-  //     m_p.push_back(0);
-  //     b_p.push_back(0);
-  // }
-
-  // x_hat = x_hat + K * (Eigen::VectorXd(2) << m_actual[k], b_actual[k]).finished() - H * x_hat;
-  // P = (Eigen::MatrixXd::Identity(4, 4) - K * H) * P;
-
-  // // Almacenar las coordenadas filtradas
-  // filtered_m.push_back(x_hat(0));
-  // filtered_b.push_back(x_hat(1));
-
-  // m_anterior[k] = m_actual[k];
-  // b_anterior[k] = b_actual[k];
-
-
-
-
-  ////////////////////////////////////////////////////////7 fin filtro kalman      
-
-
+  ///////////////////////////////////////////////////////// fin filtro kalman      
 
   
   ros::Time end_time = ros::Time::now();  
@@ -445,29 +461,26 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   // image_msg_hsv->header.stamp = in_rgb->header.stamp + delay_ros;
   // panel_hsvfilter.publish(image_msg_hsv);  
 
-  // auto t10= Clock::now();
-  // std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t10-t1).count()/1000000.0<<std::endl;
-  //   // mensaje de tiempo de ejecucion
-  // vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
-  // time_msg.header.stamp = in_rgb->header.stamp + delay_ros;  // Asignar la marca de tiempo actual al encabezado
-  // time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
+  auto t11= Clock::now();
+  std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t11-t1).count()/1000000.0<<std::endl;
+    // mensaje de tiempo de ejecucion
+  vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
+  time_msg.header.stamp = in_rgb->header.stamp + delay_ros;  // Asignar la marca de tiempo actual al encabezado
+  time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
+  time_pub.publish(time_msg);  // Publicar el mensaje
 
-  // time_pub.publish(time_msg);  // Publicar el mensaje
-
-  // publicar las caractersiticas de cada linea en un mensaje de odometria para validar
-
-  nav_msgs::Odometry lines_features_msg;
-  lines_features_msg.header.frame_id = "base_link";
-  lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
-  lines_features_msg.pose.pose.orientation.x = lc_l(0);
-  lines_features_msg.pose.pose.orientation.y = lc_l(1);
-  lines_features_msg.pose.pose.orientation.z = lc_l(2);
-  lines_features_msg.pose.pose.orientation.w = lc_l(3);
-  lines_features_msg.pose.pose.position.x = lc_r(0);
-  lines_features_msg.pose.pose.position.y = lc_r(1);
-  lines_features_msg.pose.pose.position.z = lc_r(2);
-  lines_features_msg.twist.twist.linear.x = lc_r(3);
-  lines_features_pub.publish(lines_features_msg);
+  // nav_msgs::Odometry lines_features_msg;
+  // lines_features_msg.header.frame_id = "base_link";
+  // lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
+  // lines_features_msg.pose.pose.orientation.x = lc_l(0);
+  // lines_features_msg.pose.pose.orientation.y = lc_l(1);
+  // lines_features_msg.pose.pose.orientation.z = lc_l(2);
+  // lines_features_msg.pose.pose.orientation.w = lc_l(3);
+  // lines_features_msg.pose.pose.position.x = lc_r(0);
+  // lines_features_msg.pose.pose.position.y = lc_r(1);
+  // lines_features_msg.pose.pose.position.z = lc_r(2);
+  // lines_features_msg.twist.twist.linear.x = lc_r(3);
+  // lines_features_pub.publish(lines_features_msg);
 
 }
 
@@ -477,60 +490,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "panelFeatures_kalman");
   ros::NodeHandle nh;  
 
-   Eigen::MatrixXd A(n, n); // System dynamics matrix
-    Eigen::MatrixXd C(m, n); // Output matrix
-    Eigen::MatrixXd Q(n, n); // Process noise covariance
-    Eigen::MatrixXd R(m, m); // Measurement noise covariance
-    Eigen::MatrixXd P_left(n, n); // Estimate error covariance
-    Eigen::MatrixXd P_right(n, n); // Estimate error covariance
-    double dt = 0.034;
-        // kalman 
-
-
-      A << 1, 0, dt, 0 
-          ,0, 1, 0, 0
-          ,0, 0, 1, dt
-          ,0, 0, 0, 1;
-
-      C << 1, 0, 0, 0 
-          ,0, 1, 0, 0;
-
-      Q << 1, 0, 0, 0 
-          ,0, 1, 0, 0
-          ,0, 0, 1, 0
-          ,0, 0, 0, 1;
-
-      R << 1, 0, 
-            0, 1;
-
-      P_left<<  1, 0, 0, 0 
-              ,0, 1, 0, 0
-              ,0, 0, 1, 0
-              ,0, 0, 0, 1;
-
-      P_right<< 1, 0, 0, 0 
-              ,0, 1, 0, 0
-              ,0, 0, 1, 0
-              ,0, 0, 0, 1;
-
-    KalmanFilter kf_l(dt,A, C, Q, R, P_left); 
-    KalmanFilter kf_r(dt,A, C, Q, R, P_right); 
-    Eigen::VectorXd initial_s;
-    initial_s << 0, 0;
-     kf_l.init(0, initial_s );
-     Eigen::VectorXd measure_l;
-     measure_l << 1, 2;
-     kf_r.update(measure_l);  
-
   // parametros para imagen a color
-
-  nh.getParam("/rho", rho);
-  nh.getParam("/theta", theta);
-  nh.getParam("/threshold", threshold);
-  nh.getParam("/minLineLen", minLineLen);
-  nh.getParam("/maxLineGap", maxLineGap);
-  nh.getParam("/minCan", minCan);
-  nh.getParam("/maxCan", maxCan);
   nh.getParam("/area_filter", area_filter); 
   nh.getParam("/real_sim",real_sim);
   nh.getParam("/hsv_v", hsv_v); 
@@ -539,23 +499,26 @@ int main(int argc, char** argv)
   // topics de la imagen 
   nh.getParam("/rgb_Topic", rgb_Topic);
   nh.getParam("/depth_Topic", depth_Topic);
+  nh.getParam("/odom_Topic", odom_Topic);
 
-  // message_filters::Subscriber<CompressedImage>  rgb_sub(nh, rgb_Topic , 10);
-  // message_filters::Subscriber<CompressedImage>  depth_sub(nh, depth_Topic, 10);
-  // typedef sync_policies::ApproximateTime<CompressedImage, CompressedImage> MySyncPolicy;
+  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
+  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
+  // typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
+  // sync.registerCallback(boost::bind(&callback, _1, _2 ));
 
   message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
   message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
-
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2 ));
+  message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
+  typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(100), rgb_sub, depth_sub, odom_sub);
+  sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
-
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
-
   lines_features_pub  = nh.advertise<nav_msgs::Odometry>("/panel/image/lines_features", 10);
+  time_pub = nh.advertise<vision_matrice100::DurationStamped>("/panel/image/runtime", 10);  
+
 
   ros::spin();
 }
