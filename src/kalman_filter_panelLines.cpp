@@ -163,48 +163,51 @@ void rgb_filter(cv::Mat rgb_image, cv::Scalar lowerWhite, cv::Scalar upperWhite 
 }
 
 //void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
-//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
-void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
+void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
 {
 
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
+  Eigen::VectorXd  vel_world(6), vel_body(6);
   ///////////////////////Odometria del dron
 
-  // Obtener la orientación del mensaje de odometría como un objeto Quaternion
-  tf::Quaternion q;
-  tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
+  // // Obtener la orientación del mensaje de odometría como un objeto Quaternion
+  // tf::Quaternion q;
+  // tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
 
-  // Convertir el quaternion a una matriz de rotación
-  tf::Matrix3x3 m(q);
-  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
+  // // Convertir el quaternion a una matriz de rotación
+  // tf::Matrix3x3 m(q);
+  // // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
 
-  Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
-  Eigen::VectorXd  vel_world(6), vel_body(6);
-  geometry_msgs::Twist velocity = odom_msg->twist.twist;
+  // Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
+
+  // geometry_msgs::Twist velocity = odom_msg->twist.twist;
 
 
-  vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
+  // vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
   
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            R_odom(i, j) = m[i][j];
-        }
-    }
-    // T_odom(0, 3) = odom_msg->pose.pose.position.x;
-    // T_odom(1, 3) = odom_msg->pose.pose.position.y;
-    // T_odom(2, 3) = odom_msg->pose.pose.position.z;
+  //   for (int i = 0; i < 3; i++) {
+  //       for (int j = 0; j < 3; j++) {
+  //           R_odom(i, j) = m[i][j];
+  //       }
+  //   }
+  //   // T_odom(0, 3) = odom_msg->pose.pose.position.x;
+  //   // T_odom(1, 3) = odom_msg->pose.pose.position.y;
+  //   // T_odom(2, 3) = odom_msg->pose.pose.position.z;
 
-     Eigen::MatrixXd Rt(6,6);
-     Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
-          ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
-          ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
-          ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
-          ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
-          ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
+  //    Eigen::MatrixXd Rt(6,6);
+  //    Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
+  //         ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
+  //         ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
+  //         ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
+  //         ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
+  //         ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
 
   // vel_body = Rt.transpose() * vel_world;
-  vel_body =  vel_world;
+  vel_body =  0,0,0,0,0,0;
+
+
 
 
 
@@ -512,18 +515,18 @@ int main(int argc, char** argv)
   nh.getParam("/depth_Topic", depth_Topic);
   nh.getParam("/odom_Topic", odom_Topic);
 
-  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
-  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  // typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
-  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
-  // sync.registerCallback(boost::bind(&callback, _1, _2 ));
-
   message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
   message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
-  typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
+  typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
+  sync.registerCallback(boost::bind(&callback, _1, _2 ));
+
+  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
+  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
+  // message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
+  // typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
+  // sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
