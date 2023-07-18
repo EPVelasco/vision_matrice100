@@ -46,7 +46,7 @@ ros::Publisher time_pub;          // tiempo de ejecucion
 // topics a suscribirse del nodo
 std::string rgb_Topic   = "/camera/color/image_raw";
 std::string depth_Topic = "/camera/aligned_depth_to_color/image_raw";
-std::string odom_Topic = "/dji_sdk/odometry";
+std::string odom_Topic  = "/dji_sdk/odometry";
 
 
 float area_filter = 600.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
@@ -55,17 +55,6 @@ bool kalman_bool = true; // variable para activar o desactivar el filtro de kalm
 
 float hsv_v = 200;
 float hsv_s = 100;
-
-// Variables del filtrode kalman
-
-cv::Vec4f  lp_l, lp_r; // Variables linea anterior l_pe, linea actual(lc), linea actual derivada (lp) 
-
-cv::Vec4f lc_l(0.0f, 0.0f, 0.0f, 0.0f);
-cv::Vec4f lc_r(0.0f, 0.0f, 0.0f, 0.0f);
-cv::Vec4f l_pe_l(0.0f, 0.0f, 0.0f, 0.0f);
-cv::Vec4f l_pe_r(0.0f, 0.0f, 0.0f, 0.0f);
-cv::Vec4f l_pee_l(0.0f, 0.0f, 0.0f, 0.0f);
-cv::Vec4f l_pee_r(0.0f, 0.0f, 0.0f, 0.0f);
 
 
 // Inicialización de y matrices
@@ -123,7 +112,12 @@ std::tuple<Eigen::VectorXd, Eigen::MatrixXd> kalman_filter(Eigen::VectorXd curr_
 return std::make_tuple(x_estimate,P_curr);
 }
 
+// variables globales que van a ir en la funcion rgb_filter
+
 cv::Mat gray_image_filter;
+std::vector<cv::Point>  contour_left;
+std::vector<cv::Point> contour_right;
+
 void rgb_filter(cv::Mat rgb_image, cv::Scalar lowerWhite, cv::Scalar upperWhite ){
   cv::Mat hsvImage;
   cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
@@ -153,18 +147,40 @@ void rgb_filter(cv::Mat rgb_image, cv::Scalar lowerWhite, cv::Scalar upperWhite 
       }
   }
 
-
   cv::cvtColor(outputImage, gray_image_filter, CV_BGR2GRAY);  
-
   // dilatacion vertical 
   cv::Mat kernel_dil = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 50)); // Kernel de 1x21 para la dilatación vertical
   cv::dilate(gray_image_filter, gray_image_filter, kernel_dil);
 
+    // Recorrer la imagen por filas y columnas
+  for (int i = 100; i < rgb_image.rows-100; i++) { // filas
+      bool flag_left = false;
+      bool flag_rigth = false;
+      for (int j = 1; j < rgb_image.cols/2; j++) { // columnas
+          // Obtener el valor del pixel en (i, j)
+
+          int pixel_left  = static_cast<int>(gray_image_filter.at<uchar>(i, j));
+          int pixel_right = static_cast<int>(gray_image_filter.at<uchar>(i, rgb_image.cols-j));
+
+          if (pixel_left==255 && flag_left == false){
+            contour_left.push_back(cv::Point(j, i));
+            flag_left = true;
+          }
+          if (pixel_right==255 && flag_rigth == false){
+            contour_right.push_back(cv::Point(rgb_image.cols-j, i));
+            flag_rigth = true;
+          }
+          if (flag_rigth && flag_left) // al ya tener las dos banderas en true se rompe el lazo for
+            break;
+          
+      }
+  }
+
 }
 
 //void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
-void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
-//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
+//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
 {
 
   auto t1 = Clock::now();
@@ -172,43 +188,40 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   Eigen::VectorXd  vel_world(6), vel_body(6);
   ///////////////////////Odometria del dron
 
-  // // Obtener la orientación del mensaje de odometría como un objeto Quaternion
-  // tf::Quaternion q;
-  // tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
+  // Obtener la orientación del mensaje de odometría como un objeto Quaternion
+  tf::Quaternion q;
+  tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
 
-  // // Convertir el quaternion a una matriz de rotación
-  // tf::Matrix3x3 m(q);
-  // // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
+  // Convertir el quaternion a una matriz de rotación
+  tf::Matrix3x3 m(q);
+  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
 
-  // Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
+  Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
 
-  // geometry_msgs::Twist velocity = odom_msg->twist.twist;
+  geometry_msgs::Twist velocity = odom_msg->twist.twist;
 
 
-  // vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
+  vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
   
-  //   for (int i = 0; i < 3; i++) {
-  //       for (int j = 0; j < 3; j++) {
-  //           R_odom(i, j) = m[i][j];
-  //       }
-  //   }
-  //   // T_odom(0, 3) = odom_msg->pose.pose.position.x;
-  //   // T_odom(1, 3) = odom_msg->pose.pose.position.y;
-  //   // T_odom(2, 3) = odom_msg->pose.pose.position.z;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            R_odom(i, j) = m[i][j];
+        }
+    }
+    // T_odom(0, 3) = odom_msg->pose.pose.position.x;
+    // T_odom(1, 3) = odom_msg->pose.pose.position.y;
+    // T_odom(2, 3) = odom_msg->pose.pose.position.z;
 
-  //    Eigen::MatrixXd Rt(6,6);
-  //    Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
-  //         ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
-  //         ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
-  //         ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
-  //         ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
-  //         ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
+     Eigen::MatrixXd Rt(6,6);
+     Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
+          ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
+          ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
+          ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
+          ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
+          ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
 
-  // vel_body = Rt.transpose() * vel_world;
-  vel_body <<  0,0,0,0,0,0;
-
-
-
+  vel_body = Rt.transpose() * vel_world;
+  //vel_body <<  0,0,0,0,0,0;
 
 
   /////////////////////////////////////////////
@@ -253,7 +266,6 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   cv::Mat image_in = rgb_image.clone();
   std::thread thread_1(rgb_filter, std::ref(image_in),lowerWhite,upperWhite);
 
-
   ////////////////////////////////////////////////////////// Fin del filtrado de la imagen a color //////////////////////////////////////////////////////
   
   
@@ -283,33 +295,6 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
 
 
   /////////////////////////////////////////////////////// resultados de los filtrados
-  // variables para detectar lineas con otro algoritmo
-  std::vector<cv::Point>  contour_left;
-  std::vector<cv::Point> contour_right;
-
-  // Recorrer la imagen por filas y columnas
-  for (int i = 100; i < imageHeight-100; i++) { // filas
-      bool flag_left = false;
-      bool flag_rigth = false;
-      for (int j = 1; j < imageWidth/2; j++) { // columnas
-          // Obtener el valor del pixel en (i, j)
-
-          int pixel_left  = static_cast<int>(gray_image_filter.at<uchar>(i, j));
-          int pixel_right = static_cast<int>(gray_image_filter.at<uchar>(i, imageWidth-j));
-
-          if (pixel_left==255 && flag_left == false){
-            contour_left.push_back(cv::Point(j, i));
-            flag_left = true;
-          }
-          if (pixel_right==255 && flag_rigth == false){
-            contour_right.push_back(cv::Point(imageWidth-j, i));
-            flag_rigth = true;
-          }
-          if (flag_rigth && flag_left) // al ya tener las dos banderas en true se rompe el lazo for
-            break;
-          
-      }
-  }
   
   contour_left.insert(contour_left.end(), puntos_1.begin(), puntos_1.end());
   contour_right.insert(contour_right.end(), puntos_2.begin(), puntos_2.end());
@@ -323,83 +308,76 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
    contours_2.push_back(contour_left);  
    contours_2.push_back(contour_right);
 
+   contour_right.clear();
+   contour_left.clear();
+
 
 
   /////////////////////////////////////////////////// Fin de flitrado de imagen depth /////////////////////////////////////////////////
   ///////////////////////////////////////////////////// Inicio del filtro de kalman/////////////////////////////
   /*Al ya tener todos los puntos de los bordes del panel tanto de los canales rgb como del canal depth realziamos un filtro de kalman
   de la linea que se ajusta a los dos conjuntos de puntos detectados.*/ 
-  
-  auto t10= Clock::now();
-  // Tiempo de muestreo
-  float T = std::chrono::duration_cast<std::chrono::milliseconds>(t10-t1).count();
-  T = T/1000.0;
 
-  //std::cout << T << std::endl;
+  // Variables line current left and rigth para la estimacion de estados con filtro de kalman
+  cv::Vec4f lc_l(0.0f, 0.0f, 0.0f, 0.0f);
+  cv::Vec4f lc_r(0.0f, 0.0f, 0.0f, 0.0f);
 
 
   std::vector<cv::Vec4f> linesap;
-  int cont_line = 0;
+  int cont_line = 0; // variable para contar si es la linea derecha o izqueirda
+
   for (const auto& contour : contours_2) {
 
-      // Ajustar una línea a los contornos
+      // Ajustar una línea a los contornos con fitline
       if (contour.size()==0)
-        break;
+        break; // si no existen contornos se rompe el for
       cv::Vec4f line;
       cv::fitLine(contour, line, cv::DIST_L1, 0, 0.001, 0.01);
 
+      // caracteristicas de la linea vector en x, vector en y y punto inicial (x,y)
       float vx = line[0];
       float vy = line[1];
       float x  = line[2];
       float y  = line[3];
 
-
-
-      if (inicio_kalman ){ // condicion para inicialiszar las varialbes del filtro de kalman
-         
+      if (inicio_kalman ){ // condicion para inicializar las varialbes del filtro de kalman
+        
+        // inicializar matriz P del filtro de kalman (para la linea derecha e izquierda)
         P_left << 1, 0, 0, 0
                  ,0, 1, 0, 0
                  ,0, 0, 1, 0
                  ,0, 0, 0, 1; 
+
         P_right = P_left;
 
         if (cont_line == 0){
           lc_l = line;
-          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3]; // estados iniciales
+          curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3]; // estados iniciales de la linea izqueirda
           x_estimate_l   = curr_l;
         }
         else{
           lc_r = line;        
-          curr_r << lc_r[0], lc_r[1], lc_l[2], lc_l[3]; // estados iniciales
+          curr_r << lc_r[0], lc_r[1], lc_l[2], lc_l[3]; // estados iniciales de la linea derecha
           x_estimate_r   = curr_r;
         }              
         
-
        }
 
-      else{   
+      else{   // Despues del inicializado del filtro de kalman
 
         if (cont_line == 0){
           lc_l = line;   
           curr_l << lc_l[0], lc_l[1], lc_l[2], lc_l[3];
-          
-          // l_pee_l = l_pe_l;
-          // l_pe_l = lc_l;
-          //lc_l = line;
         }
         else{
           lc_r = line;  
           curr_r << lc_r[0], lc_r[1], lc_r[2], lc_r[3];
-
-          // l_pee_r = l_pe_r;
-          // l_pe_r = lc_r;
-          //lc_r = line;
         }
-      }        
+      }       
 
+      // matrices para tener los resultados del filtro de kalman en la iteracion K para luego ser utilizada en k+1
       Eigen::VectorXd line_kalman_left(4);
       Eigen::VectorXd line_kalman_right(4);
-
       Eigen::MatrixXd outputP_left(4,4);
       Eigen::MatrixXd outputP_right(4,4);
       
@@ -412,8 +390,10 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
         //Puntos de la linea izquierda filtrada 
           cv::Point pt1_kalma_left(x_estimate_l[2] - 1000 * x_estimate_l[0], x_estimate_l[3] - 1000 * x_estimate_l[1]);
           cv::Point pt2_kalma_left(x_estimate_l[2] + 1000 * x_estimate_l[0], x_estimate_l[3] + 1000 * x_estimate_l[1]); 
+          float angle = std::atan2(pt1_kalma_left.y - pt2_kalma_left.y, pt1_kalma_left.x - pt2_kalma_left.x) * 180 / CV_PI;
+          if (std::abs(angle) < 135 && std::abs(angle) > 45 )           
+            cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
           cv::line(Image_lines, pt1_kalma_left, pt2_kalma_left, cv::Scalar(0, 0, 255), 2, cv::LINE_AA);
-          cv::line(mono_resultImage, pt1_kalma_left, pt2_kalma_left, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
         }
         else{
           std::tie(line_kalman_right, outputP_right) = kalman_filter(curr_r, x_estimate_r, P_right, vel_body);
@@ -422,33 +402,28 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
           //Puntos de la linea izquierda filtrada 
           cv::Point pt1_kalma_right(x_estimate_r[2] - 1000 * x_estimate_r[0], x_estimate_r[3] - 1000 * x_estimate_r[1]);
           cv::Point pt2_kalma_right(x_estimate_r[2] + 1000 * x_estimate_r[0], x_estimate_r[3] + 1000 * x_estimate_r[1]); 
+          float angle = std::atan2(pt1_kalma_right.y - pt2_kalma_right.y, pt1_kalma_right.x - pt2_kalma_right.x) * 180 / CV_PI;
+          if (std::abs(angle) < 135 && std::abs(angle) > 45 ) 
+            cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
           cv::line(Image_lines, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 0, 0), 2, cv::LINE_AA);
-          cv::line(mono_resultImage, pt1_kalma_right, pt2_kalma_right, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-
         }
       }
      
-      //Puntos de la linea sin filtrar
-      cv::Point pt1_out_lin(x - 1000 * vx, y - 1000 * vy);
-      cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
 
-
-      // float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
-
-     // if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
-      if(kalman_bool == false)
-        cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-
-     // cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
-      //}
- 
-
-      //  cv::line(mono_resultImage, pt1, pt2, cv::Scalar(255, 255, 255), 2);
+      if(kalman_bool == false){
+        //Puntos de la linea sin filtrar
+        cv::Point pt1_out_lin(x - 1000 * vx, y - 1000 * vy);
+        cv::Point pt2_out_lin(x + 1000 * vx, y + 1000 * vy); 
+        float angle = std::atan2(pt1_out_lin.y - pt2_out_lin.y, pt1_out_lin.x - pt2_out_lin.x) * 180 / CV_PI;
+        if (std::abs(angle) < 135 && std::abs(angle) > 45 ) 
+          cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
+        cv::line(Image_lines, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
+      }
       cont_line ++;
       
    }
 
-  inicio_kalman = false;
+  inicio_kalman = false; // variable que rompe la inicializado del filtro de kalman
 
   ///////////////////////////////////////////////////////// fin filtro kalman      
 
@@ -483,19 +458,6 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
   time_pub.publish(time_msg);  // Publicar el mensaje
 
-  // nav_msgs::Odometry lines_features_msg;
-  // lines_features_msg.header.frame_id = "base_link";
-  // lines_features_msg.header.stamp = in_rgb->header.stamp + delay_ros;;
-  // lines_features_msg.pose.pose.orientation.x = lc_l(0);
-  // lines_features_msg.pose.pose.orientation.y = lc_l(1);
-  // lines_features_msg.pose.pose.orientation.z = lc_l(2);
-  // lines_features_msg.pose.pose.orientation.w = lc_l(3);
-  // lines_features_msg.pose.pose.position.x = lc_r(0);
-  // lines_features_msg.pose.pose.position.y = lc_r(1);
-  // lines_features_msg.pose.pose.position.z = lc_r(2);
-  // lines_features_msg.twist.twist.linear.x = lc_r(3);
-  // lines_features_pub.publish(lines_features_msg);
-
 }
 
 int main(int argc, char** argv)
@@ -515,22 +477,21 @@ int main(int argc, char** argv)
   nh.getParam("/depth_Topic", depth_Topic);
   nh.getParam("/odom_Topic", odom_Topic);
 
-  message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
-  message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2 ));
-
   // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
   // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  // message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
-  // typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
-  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
-  // sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
+  // typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
+  // sync.registerCallback(boost::bind(&callback, _1, _2 ));
+
+  message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
+  message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
+  message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
+  typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(100), rgb_sub, depth_sub, odom_sub);
+  sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
-  lines_features_pub  = nh.advertise<nav_msgs::Odometry>("/panel/image/lines_features", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/panel/image/runtime", 10);  
 
 

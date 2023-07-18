@@ -26,6 +26,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_datatypes.h>
+#include <thread>
 
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -122,49 +123,91 @@ std::tuple<Eigen::VectorXd, Eigen::MatrixXd> kalman_filter(Eigen::VectorXd curr_
 return std::make_tuple(x_estimate,P_curr);
 }
 
+cv::Mat gray_image_filter;
+void rgb_filter(cv::Mat rgb_image, cv::Scalar lowerWhite, cv::Scalar upperWhite ){
+  cv::Mat hsvImage;
+  cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
+
+  // Binarizar la imagen utilizando el rango de colores blanco
+  cv::Mat binaryImage;
+  cv::inRange(hsvImage, lowerWhite, upperWhite, binaryImage);
+
+  // Buscar los contornos en la imagen binaria
+  std::vector<std::vector<cv::Point>> contours;
+  cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
+ 
+  double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
+  // Crear una imagen de salida para mostrar los contornos filtrados
+  cv::Mat outputImage = cv::Mat::zeros(binaryImage.size(), CV_8UC3);
+
+  // Filtrar los contornos más pequeños
+  std::vector<cv::Vec4f> lines_input;
+  for (size_t i = 0; i < contours.size(); i++)
+  {
+      double area = cv::contourArea(contours[i]);
+      if (area > areaThreshold)
+      {
+          // Dibujar los contornos filtrados en la imagen de salida
+          cv::Scalar color(255, 255, 255); // Color verde
+          cv::drawContours(outputImage, contours, static_cast<int>(i), color, 2) ;
+      }
+  }
+
+
+  cv::cvtColor(outputImage, gray_image_filter, CV_BGR2GRAY);  
+
+  // dilatacion vertical 
+  cv::Mat kernel_dil = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 50)); // Kernel de 1x21 para la dilatación vertical
+  cv::dilate(gray_image_filter, gray_image_filter, kernel_dil);
+
+}
+
 //void callback(const CompressedImageConstPtr& in_rgb, const CompressedImageConstPtr& in_depth)
-//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
-void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
+void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
+//void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const nav_msgs::Odometry::ConstPtr& odom_msg)
 {
 
   auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
+  Eigen::VectorXd  vel_world(6), vel_body(6);
   ///////////////////////Odometria del dron
 
-  // Obtener la orientación del mensaje de odometría como un objeto Quaternion
-  tf::Quaternion q;
-  tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
+  // // Obtener la orientación del mensaje de odometría como un objeto Quaternion
+  // tf::Quaternion q;
+  // tf::quaternionMsgToTF(odom_msg->pose.pose.orientation, q);
 
-  // Convertir el quaternion a una matriz de rotación
-  tf::Matrix3x3 m(q);
-  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
+  // // Convertir el quaternion a una matriz de rotación
+  // tf::Matrix3x3 m(q);
+  // // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
 
-  Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
-  Eigen::VectorXd  vel_world(6), vel_body(6);
-  geometry_msgs::Twist velocity = odom_msg->twist.twist;
+  // Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
+
+  // geometry_msgs::Twist velocity = odom_msg->twist.twist;
 
 
-  vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
+  // vel_world <<  velocity.linear.x, velocity.linear.y, velocity.linear.z, velocity.angular.x, velocity.angular.y, velocity.angular.z;
   
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            R_odom(i, j) = m[i][j];
-        }
-    }
-    // T_odom(0, 3) = odom_msg->pose.pose.position.x;
-    // T_odom(1, 3) = odom_msg->pose.pose.position.y;
-    // T_odom(2, 3) = odom_msg->pose.pose.position.z;
+  //   for (int i = 0; i < 3; i++) {
+  //       for (int j = 0; j < 3; j++) {
+  //           R_odom(i, j) = m[i][j];
+  //       }
+  //   }
+  //   // T_odom(0, 3) = odom_msg->pose.pose.position.x;
+  //   // T_odom(1, 3) = odom_msg->pose.pose.position.y;
+  //   // T_odom(2, 3) = odom_msg->pose.pose.position.z;
 
-     Eigen::MatrixXd Rt(6,6);
-     Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
-          ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
-          ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
-          ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
-          ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
-          ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
+  //    Eigen::MatrixXd Rt(6,6);
+  //    Rt << R_odom(0), R_odom(1), R_odom(2) ,0        ,0         ,0
+  //         ,R_odom(3), R_odom(4), R_odom(5) ,0        ,0         ,0
+  //         ,R_odom(6), R_odom(7), R_odom(8) ,0        ,0         ,0
+  //         ,0        ,0         , 0         ,R_odom(0), R_odom(1), R_odom(2) 
+  //         ,0        ,0         , 0         ,R_odom(3), R_odom(4), R_odom(5) 
+  //         ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
 
   // vel_body = Rt.transpose() * vel_world;
-  vel_body =  vel_world;
+  vel_body <<  0,0,0,0,0,0;
+
+
 
 
 
@@ -184,6 +227,8 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
 
 
   cv::Mat rgb_image    =    cv_rgbCam->image; 
+  cv::Mat Image_lines =  cv_rgbCam->image; // imange para plotear las linas
+
   // Obtener las dimensiones de la imagen
   int imageHeight = rgb_image.rows; // rows
   int imageWidth  = rgb_image.cols; // cols
@@ -205,46 +250,39 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
     lowerWhite = cv::Scalar(0, 0, 200);  // Umbral inferior para blanco
     upperWhite = cv::Scalar(180, 30, 255);  // Umbral superior para blanco
   }
+  cv::Mat image_in = rgb_image.clone();
+  std::thread thread_1(rgb_filter, std::ref(image_in),lowerWhite,upperWhite);
 
-  cv::Mat hsvImage;
-  cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
-
-  // Binarizar la imagen utilizando el rango de colores blanco
-  cv::Mat binaryImage;
-  cv::inRange(hsvImage, lowerWhite, upperWhite, binaryImage);
-
-  // Buscar los contornos en la imagen binaria
-  std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(binaryImage, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
- 
-  double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
-  // Crear una imagen de salida para mostrar los contornos filtrados
-  cv::Mat outputImage = cv::Mat::zeros(binaryImage.size(), CV_8UC3);
-
-  cv::Mat Image_lines =  cv_rgbCam->image;
-
-  // Filtrar los contornos más pequeños
-  std::vector<cv::Vec4f> lines_input;
-  for (size_t i = 0; i < contours.size(); i++)
-  {
-      double area = cv::contourArea(contours[i]);
-      if (area > areaThreshold)
-      {
-          // Dibujar los contornos filtrados en la imagen de salida
-          cv::Scalar color(255, 255, 255); // Color verde
-          cv::drawContours(outputImage, contours, static_cast<int>(i), color, 2) ;
-      }
-  }
-
-  cv::Mat gray_image_filter;
-  cv::cvtColor(outputImage, gray_image_filter, CV_BGR2GRAY);  
-
-  // dilatacion vertical 
-  cv::Mat kernel_dil = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 50)); // Kernel de 1x21 para la dilatación vertical
-  cv::dilate(gray_image_filter, gray_image_filter, kernel_dil);
 
   ////////////////////////////////////////////////////////// Fin del filtrado de la imagen a color //////////////////////////////////////////////////////
   
+  
+  cv::Mat mono_resultImage   = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
+  cv::Mat outputImage_points = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC3);
+
+ 
+  //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_left}, 0, cv::Scalar(0, 255, 0), 1);
+  // for (const auto& point : contour_left) 
+  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
+  // for (const auto& point : contour_right) 
+  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
+
+  //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_right}, 0, cv::Scalar(0, 0, 255), 1);
+
+  /////////////////////////////////////////////////// Inicio  de Filtrado de la imagen depth //////////////////////////////////////////
+ 
+  cv::Mat depthImage = cv_depthCam->image;
+  cv::Mat depthValues;
+  depthImage.convertTo(depthValues, CV_16U);
+
+
+  // llamar a la función y guardar los resultados en dos objetos std::vector<cv::Point>
+  auto[puntos_1, puntos_2] =processDepth(depthValues);
+
+  thread_1.join();
+
+
+  /////////////////////////////////////////////////////// resultados de los filtrados
   // variables para detectar lineas con otro algoritmo
   std::vector<cv::Point>  contour_left;
   std::vector<cv::Point> contour_right;
@@ -272,31 +310,7 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
           
       }
   }
-
-  cv::Mat mono_resultImage = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
-
-  cv::Mat outputImage_points = cv::Mat::zeros(binaryImage.size(), CV_8UC3);
-
- 
-  //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_left}, 0, cv::Scalar(0, 255, 0), 1);
-  // for (const auto& point : contour_left) 
-  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
-  // for (const auto& point : contour_right) 
-  //       cv::circle(outputImage_points, cv::Point(point.x, point.y), 1, cv::Scalar(255,255,255), -1);
-
-  //cv::drawContours(outputImage_points, std::vector<std::vector<cv::Point>>{contour_right}, 0, cv::Scalar(0, 0, 255), 1);
-
-  /////////////////////////////////////////////////// Inicio  de Filtrado de la imagen depth //////////////////////////////////////////
- 
-  cv::Mat depthImage = cv_depthCam->image;
-  cv::Mat depthValues;
-  depthImage.convertTo(depthValues, CV_16U);
-
-
-  // llamar a la función y guardar los resultados en dos objetos std::vector<cv::Point>
-  auto [puntos_1, puntos_2] = processDepth(depthValues);
-
-
+  
   contour_left.insert(contour_left.end(), puntos_1.begin(), puntos_1.end());
   contour_right.insert(contour_right.end(), puntos_2.begin(), puntos_2.end());
 
@@ -501,18 +515,18 @@ int main(int argc, char** argv)
   nh.getParam("/depth_Topic", depth_Topic);
   nh.getParam("/odom_Topic", odom_Topic);
 
-  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
-  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  // typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
-  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
-  // sync.registerCallback(boost::bind(&callback, _1, _2 ));
-
   message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
   message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
-  message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
-  typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
-  Synchronizer<MySyncPolicy> sync(MySyncPolicy(100), rgb_sub, depth_sub, odom_sub);
-  sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
+  typedef sync_policies::ApproximateTime<Image, Image> MySyncPolicy;
+  Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub);
+  sync.registerCallback(boost::bind(&callback, _1, _2 ));
+
+  // message_filters::Subscriber<Image>  rgb_sub(nh, rgb_Topic , 10);
+  // message_filters::Subscriber<Image>  depth_sub(nh, depth_Topic, 10);
+  // message_filters::Subscriber<nav_msgs::Odometry>  odom_sub(nh, odom_Topic, 10);
+  // typedef sync_policies::ApproximateTime<Image, Image, nav_msgs::Odometry> MySyncPolicy;
+  // Synchronizer<MySyncPolicy> sync(MySyncPolicy(50), rgb_sub, depth_sub, odom_sub);
+  // sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
   pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
   panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);

@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+    <param name="real_sim"    type="bool"   value="True" />
+    <param name="area_filter" type="double" value="600.0" /> <!-- valor de 600-->
+    <param name="hsv_v" type="double" value="200.0" /> <!-- valor entre 200 a 255 , el real probar con 200-->
+    <param name="hsv_s" type="double" value="100.0" /> <!-- valor entre 0 a 100 -->
+
+    <param name="rgb_Topic"   type="str" value="/camera/color/image_raw"/>
+    <param name="depth_Topic" type="str" value="/camera/aligned_depth_to_color/image_raw"/>
+    <param name="odom_Topic"  type="str" value="/dji_sdk/odometry"/>
+
+    <node pkg="vision_matrice100" type="kalman_lines_node" name="kalman_lines_node" output="screen"/>
+
+</launch>
+
