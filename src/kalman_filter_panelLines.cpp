@@ -205,7 +205,7 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth)
   //         ,0        ,0         , 0         ,R_odom(6), R_odom(7), R_odom(8) ;
 
   // vel_body = Rt.transpose() * vel_world;
-  vel_body =  0,0,0,0,0,0;
+  vel_body <<  0,0,0,0,0,0;
 
 
 
