@@ -9,7 +9,9 @@
     <param name="threshold"         type="double" value="100.0" />
 
     <param name="odom_dron"         type="str" value="/dji_sdk/odometry" />  
-	<param name="imgTopic"          type="str" value="/panel/image/mask" /> 
+	<!-- <param name="imgTopic"          type="str" value="/panel/image/mask" />  -->
+    <param name="imgTopic"          type="str" value="/panel/image/mask/kalman" /> 
+    
 
     <param name="vx_lineal"         type="double" value="0.2" />    <!-- Velocidad lineal -->
     <param name="d_panel_d"         type="double" value="300.0" />   <!-- Ancho en pixeles del panel deseado -->
