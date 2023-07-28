@@ -4,7 +4,7 @@
     <param name="real_sim"    type="bool"   value="False" />
     <param name="area_filter" type="double" value="10.0" /> 
 
-    <param name="rgb_Topic"   type="str" value="/camera/color/image_raw"/>
+    <param name="rgb_Topic"   type="str" value="/sim/color/image_raw"/>
     <param name="depth_Topic" type="str" value="/camera/aligned_depth_to_color/image_raw"/>
     <param name="odom_Topic"  type="str" value="/dji_sdk/odometry"/>
 
