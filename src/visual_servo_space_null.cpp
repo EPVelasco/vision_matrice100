@@ -568,19 +568,19 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
     // matriz para espacio nulo
     Eigen::MatrixXf gain_null(6,6);
-    gain_null << 10 ,0 ,0 ,0 ,0 ,0
-                ,0 ,10 ,0 ,0 ,0 ,0
-                ,0 ,0 ,10 ,0 ,0 ,0
+    gain_null << 1 ,0 ,0 ,0 ,0 ,0
+                ,0 ,1 ,0 ,0 ,0 ,0
+                ,0 ,0 ,1 ,0 ,0 ,0
                 ,0 ,0 ,0 ,lambda(3,0) ,0 ,0
                 ,0 ,0 ,0 ,0 ,lambda(4,0) ,0
-                ,0 ,0 ,0 ,0 ,0 ,10;
+                ,0 ,0 ,0 ,0 ,0 ,1;
                 
     gain_null = lambda(2,0)*gain_null ;
 
     Eigen::MatrixXf v_null(6,1);
     v_null << vx_lineal/(1+r_th_norm.norm()),
               0,
-              0.0025*(d_panel_r-d_panel_d),
+              lambda(6,0)*(d_panel_r-d_panel_d),
               0,
               0,
               0;    

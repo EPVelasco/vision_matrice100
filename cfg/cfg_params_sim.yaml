@@ -17,14 +17,14 @@ spxd: [  96.0  ,  3.3,
         -116.0 , -109.69]
         
       #ganancias para el control servovisual
-      # lambda[0] = ganancias para el error en r
+      # lambda[0] = ganancias para el error en r (60 para error normalizado y 10 para tanh)
       # lambda[1] = ganancias para el error en theta
       # lambda[2] = ganancias para espacio nulo 
       # lambda[3] = ganancias de espacio nulo angular en x
       # lambda[4] = ganancias de espacio nulo angular en y
-      # lambda[5] = ganancias de espacio nulo angular en y
+      # lambda[5] = ganancias cuando el error en r es con tanh
       # lambda[6 - 7] = no se esta usando
 
-lambda: [10.0, 0.5, 1.0, 50.0, 50.0, 5.0, 1.0, 1.0]
+lambda: [60.0, 0.5, 1.0, 50.0, 50.0, 12.0,  0.0025, 1.0]
 
 
