@@ -599,7 +599,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     in_J_sal = gain_null.inverse()*J_sal_trans * in_J_sal;
 
 
-    q_vel = in_J_sal * r_th_norm + (Iden - in_J_sal* J_sal ) * v_null ;  //calculo de velocidades de salida que van al robot solo para el angulo theta
+    q_vel = in_J_sal * r_theta + (Iden - in_J_sal* J_sal ) * v_null ;  //calculo de velocidades de salida que van al robot solo para el angulo theta
 
     // //// nueva jacobiana aumentada
     // Eigen::MatrixXf J_aux(2,2);
