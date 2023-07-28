@@ -554,8 +554,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     r_theta << lambda(0,0)* (err_r), 
                lambda(1,0)* (err_theta);
 
-    //float r_aux = (err_r)/(imageWidth/2);
-    float r_aux = tanh((err_r));
+    float r_aux = (err_r)/(imageWidth/2);
+    //float r_aux = tanh((err_r));
 
     Eigen::MatrixXf r_th_norm(2,1);
     r_th_norm << lambda(0,0)* r_aux, 
