@@ -707,10 +707,10 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   err_servo_msg.header.frame_id = "base_link";
   err_servo_msg.header.stamp = in_mask->header.stamp + delay_ros;
 
-  err_servo_msg.twist.linear.x =  r_theta(0);    // errores de r no normalizado (0.0 -r)
-  err_servo_msg.twist.linear.y =  r_theta(1);    // errores de theta no normalizado (angulo_deseado th)
-  err_servo_msg.twist.linear.z =  r_th_norm(0);  //  normalizado
-  err_servo_msg.twist.angular.x = r_th_norm(1);  // errores de theta normalizado
+  err_servo_msg.twist.linear.x =  err_r;    // errores de r no normalizado (0.0 -r)
+  err_servo_msg.twist.linear.y =  err_theta;    // errores de theta no normalizado (angulo_deseado th)
+  err_servo_msg.twist.linear.z =  r_aux;  //  normalizado
+  err_servo_msg.twist.angular.x = err_theta;  // errores de theta normalizado
 
   err_servo_pub.publish(err_servo_msg);
     
