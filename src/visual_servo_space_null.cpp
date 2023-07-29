@@ -560,6 +560,10 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     Eigen::MatrixXf r_th_norm(2,1);
     r_th_norm << lambda(0,0)* r_aux, 
                  lambda(1,0)* (err_theta );
+
+    Eigen::MatrixXf r_th_wo_gain(2,1);
+    r_th_wo_gain << r_aux, 
+                    err_theta;
       
 
     // std::cout<<"Error norma: "<<r_th_norm.norm()<<std::endl;
@@ -578,7 +582,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
     gain_null = lambda(2,0)*gain_null ;
 
     Eigen::MatrixXf v_null(6,1);
-    v_null << vx_lineal/(1+r_th_norm.norm()),
+    v_null << vx_lineal/(1+r_th_wo_gain.norm()),
               0,
               lambda(6,0)*(d_panel_r-d_panel_d),
               0,
