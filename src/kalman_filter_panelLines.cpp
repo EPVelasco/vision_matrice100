@@ -490,8 +490,8 @@ int main(int argc, char** argv)
   Synchronizer<MySyncPolicy> sync(MySyncPolicy(100), rgb_sub, depth_sub, odom_sub);
   sync.registerCallback(boost::bind(&callback, _1, _2 , _3));
   
-  pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask/kalman", 10);
-  panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/points", 10);
+  pub_img_out = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);
+  panel_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/panel/image/runtime", 10);  
 
 
