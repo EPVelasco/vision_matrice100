@@ -2,8 +2,8 @@
 <launch>
 
     <param name="real_sim"    type="bool"   value="True" />
-    <param name="area_filter" type="double" value="600.0" /> <!-- valor de 600-->
-    <param name="hsv_v" type="double" value="200.0" /> <!-- valor entre 200 a 255 , el real probar con 200-->
+    <param name="area_filter" type="double" value="800.0" /> <!-- valor de 600-->
+    <param name="hsv_v" type="double" value="250.0" /> <!-- valor entre 200 a 255 , el real probar con 200-->
     <param name="hsv_s" type="double" value="100.0" /> <!-- valor entre 0 a 100 -->
 
     <param name="rgb_Topic"   type="str" value="/camera/color/image_raw"/>
