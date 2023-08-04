@@ -72,8 +72,6 @@ float angle_desired = 0;
 float vx_lineal = 0.2; // velocidad hacia adelante en espacios nulos (m/s)
 
 double d_panel_d = 300.0;//  distancia al panel deseada en pixeles
-
-ros::Time delay_ros;
  
 
 // matrices de calibracion entre la camara y el dron
@@ -84,16 +82,8 @@ Eigen::MatrixXf Mc(3,4);  // camera calibration matrix
 Eigen::MatrixXf Spxd(8,1);   // 4 puntos x,y en pixeles que la deteccion de los paneles puntos acutales
 Eigen::MatrixXf lambda(8,1);  // ganancias seleccionadas en el control
 
-Eigen::MatrixXf q_vel(6,1)   ; // velocidades del control servovisual
-Eigen::MatrixXf q_vel_dw(6,1); // velocidades del control servovisual
-
-// inicializacion de errores
-float err_r = 0; 
-float err_theta = 0;
-float r_aux = 0;
-
-// imagen de salida
-cv::Mat resultImage;
+Eigen::MatrixXf q_vel(6,1) ; // velocidades del control servovisual
+Eigen::MatrixXf q_vel_dw(6,1) ; // velocidades del control servovisual
 
 void signalHandler(int signum)
 {
@@ -134,6 +124,7 @@ void signalHandler(int signum)
 ///////////////////////////////////////callback
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
+  auto t1 = Clock::now();
   ros::Time start_time = ros::Time::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
@@ -168,7 +159,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   }
 
   // Dibujar las líneas aproximadas en la imagen original
-  
+  cv::Mat resultImage;
   cv::cvtColor(mask_img, resultImage, cv::COLOR_GRAY2BGR);
   float ang1 = 0 ,ang2 = 0, x11 = 0, x12 = 0, y11 =0 , y12 =0, x21 = 0, x22 = 0, y21 =0 , y22 =0;// vyl1 = 0, vyl2 = 0,  yl1 = 0, yl2 = 0;
   float ang_ori1 = 0, ang_ori2 = 0;
@@ -557,13 +548,13 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
     Eigen::MatrixXf r_theta(2,1);
 
-    err_r = 0.0 - r;
-    err_theta = angle_desired - ang_theta  ;
+    float err_r = 0.0 - r;
+    float err_theta = angle_desired - ang_theta  ;
     
     r_theta << lambda(0,0)* (err_r), 
                lambda(1,0)* (err_theta);
 
-    r_aux = (err_r)/(imageWidth/2);
+    float r_aux = (err_r)/(imageWidth/2);
     //float r_aux = tanh((err_r)/lambda(5,0));
 
     Eigen::MatrixXf r_th_norm(2,1);
@@ -639,7 +630,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
         
   //////////// Envio de resultados de velocidades al topic de odometria 
 
-  if (!control_ok || xc ==0 )
+  if (!control_ok || xc ==0)
     q_vel << 0.0, 0.0, 0.0, 0.0, 0.0 , 0.0 ;
  
   ////////////// conversion velocidades dron mundo
@@ -664,11 +655,78 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 
   q_vel_dw = d_W * q_vel;
 
- ros::Time end_time = ros::Time::now();  
+  ros::Time end_time = ros::Time::now();  
   // Calcular la diferencia de tiempo
- ros::Time time_mask = in_mask->header.stamp;
- ros::Duration delay_pro = end_time - start_time; 
- delay_ros = time_mask + delay_pro;
+  ros::Duration delay_ros = end_time - start_time;
+
+  // // mensaje de tiempo de ejecucion
+
+  vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
+  time_msg.header.stamp = in_mask->header.stamp + delay_ros;  // Asignar la marca de tiempo actual al encabezado
+  time_msg.data = delay_ros;  // Asignar el valor a publicar al campo 'data' del mensaje
+
+  time_pub.publish(time_msg);  // Publicar el mensaje
+
+  
+  // Velocidades del cuerpo
+  geometry_msgs::TwistStamped  velCuerpo_msgs;
+
+  //velCuerpo_msgs.header = in_mask->header;
+  velCuerpo_msgs.header.frame_id = "base_link";
+  velCuerpo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
+
+  velCuerpo_msgs.twist.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
+  velCuerpo_msgs.twist.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
+  velCuerpo_msgs.twist.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
+  velCuerpo_msgs.twist.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
+  velCuerpo_msgs.twist.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
+  velCuerpo_msgs.twist.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
+
+  // std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
+
+  veldrone_pub.publish(velCuerpo_msgs);
+
+  // velocidades del dron con respecto al mundo
+  geometry_msgs::TwistStamped  velCuerpoMundo_msgs;  
+
+
+  //velCuerpoMundo_msgs.header = in_mask->header;
+  velCuerpoMundo_msgs.header.frame_id = "world";
+  velCuerpoMundo_msgs.header.stamp = in_mask->header.stamp + delay_ros;
+
+  velCuerpoMundo_msgs.twist.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
+  velCuerpoMundo_msgs.twist.linear.y =  q_vel_dw(1,0);    // Velocidad lineal en el eje y
+  velCuerpoMundo_msgs.twist.linear.z =  q_vel_dw(2,0);    // Velocidad lineal en el eje z
+  velCuerpoMundo_msgs.twist.angular.x = q_vel_dw(3,0);   // Velocidad angular en el eje x
+  velCuerpoMundo_msgs.twist.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
+  velCuerpoMundo_msgs.twist.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
+
+  veldroneWorld_pub.publish(velCuerpoMundo_msgs);
+
+  // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
+
+  // publicacion de los errores del servovisual en un topic tipo velocidad(solo es apra ver los errores)
+  geometry_msgs::TwistStamped  err_servo_msg;  
+
+  err_servo_msg.header.frame_id = "base_link";
+  err_servo_msg.header.stamp = in_mask->header.stamp + delay_ros;
+
+  err_servo_msg.twist.linear.x =  err_r;    // errores de r no normalizado (0.0 -r)
+  err_servo_msg.twist.linear.y =  err_theta;    // errores de theta no normalizado (angulo_deseado th)
+  err_servo_msg.twist.linear.z =  r_aux;  //  normalizado
+  err_servo_msg.twist.angular.x = err_theta;  // errores de theta normalizado
+
+  err_servo_pub.publish(err_servo_msg);
+    
+  sensor_msgs::ImagePtr image_msg;
+  image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
+  image_msg->header.stamp  = in_mask->header.stamp;
+ 
+  featuresRGB_pub.publish(image_msg);
+
+  
+  auto t2= Clock::now();
+  std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
 
 }
 
@@ -743,85 +801,7 @@ int main(int argc, char** argv)
   veldroneWorld_pub = nh.advertise<geometry_msgs::TwistStamped>(vel_drone_world_topic, 10);
   err_servo_pub = nh.advertise<geometry_msgs::TwistStamped>("/dji_sdk/visual_servoing/errores", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/dji_sdk/visual_servoing/runtime", 10);  
-
-  ros::Rate loop_rate(20);
-
-  while (ros::ok())
-  {    
-    ros::spinOnce();
-    auto t1 = Clock::now();
-    ros::Time duration = delay_ros;
-    // mensaje de tiempo de ejecucion
-    vision_matrice100::DurationStamped time_msg;  // Crear una instancia del mensaje
-    time_msg.header.stamp =  duration;  // Asignar la marca de tiempo actual al encabezado
-    time_msg.data = duration - ros::Time(0);  // Asignar el valor a publicar al campo 'data' del mensaje
-    
-    // Velocidades del cuerpo
-    geometry_msgs::TwistStamped  velCuerpo_msgs;
-
-    velCuerpo_msgs.header.frame_id = "base_link";
-    velCuerpo_msgs.header.stamp = duration;
-
-    velCuerpo_msgs.twist.linear.x =  q_vel(0,0);    // Velocidad lineal en el eje x
-    velCuerpo_msgs.twist.linear.y =  q_vel(1,0);    // Velocidad lineal en el eje y
-    velCuerpo_msgs.twist.linear.z =  q_vel(2,0);    // Velocidad lineal en el eje z
-    velCuerpo_msgs.twist.angular.x = q_vel(3,0);   // Velocidad angular en el eje x
-    velCuerpo_msgs.twist.angular.y = q_vel(4,0);   // Velocidad angular en el eje y
-    velCuerpo_msgs.twist.angular.z = q_vel(5,0);   // Velocidad angular en el eje z
-
-    // std::cout<< "velocidades dron: "<<std::endl<<q_vel<<std::endl;
-
-    // velocidades del dron con respecto al mundo
-    geometry_msgs::TwistStamped  velCuerpoMundo_msgs;  
-
-    velCuerpoMundo_msgs.header.frame_id = "world";
-    velCuerpoMundo_msgs.header.stamp =  duration;
-
-    velCuerpoMundo_msgs.twist.linear.x =  q_vel_dw(0,0);    // Velocidad lineal en el eje x
-    velCuerpoMundo_msgs.twist.linear.y =  q_vel_dw(1,0);    // Velocidad lineal en el eje y
-    velCuerpoMundo_msgs.twist.linear.z =  q_vel_dw(2,0);    // Velocidad lineal en el eje z
-    velCuerpoMundo_msgs.twist.angular.x = q_vel_dw(3,0);   // Velocidad angular en el eje x
-    velCuerpoMundo_msgs.twist.angular.y = q_vel_dw(4,0);   // Velocidad angular en el eje y
-    velCuerpoMundo_msgs.twist.angular.z = q_vel_dw(5,0);   // Velocidad angular en el eje z
-
-    //veldroneWorld_pub.publish(velCuerpoMundo_msgs);
-
-    // std::cout<< "velocidades dron-mundo: "<<std::endl<<q_vel_dw<<std::endl;
-
-    // publicacion de los errores del servovisual en un topic tipo velocidad(solo es apra ver los errores)
-    geometry_msgs::TwistStamped  err_servo_msg;  
-
-    
-
-    err_servo_msg.header.frame_id = "base_link";
-    err_servo_msg.header.stamp =  duration ;
-
-    err_servo_msg.twist.linear.x =  err_r;    // errores de r no normalizado (0.0 -r)
-    err_servo_msg.twist.linear.y =  err_theta;    // errores de theta no normalizado (angulo_deseado th)
-    err_servo_msg.twist.linear.z =  r_aux;  //  normalizado
-    err_servo_msg.twist.angular.x = err_theta;  // errores de theta normalizado
-
-    //err_servo_pub.publish(err_servo_msg);
-      
-    sensor_msgs::ImagePtr image_msg;
-    image_msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", resultImage).toImageMsg();  
-    image_msg->header.stamp  = duration;
-  
-    //featuresRGB_pub.publish(image_msg);   
-
-
-    time_pub.publish(time_msg);
-    veldrone_pub.publish(velCuerpo_msgs);
-    veldroneWorld_pub.publish(velCuerpoMundo_msgs);
-    err_servo_pub.publish(err_servo_msg);
-    featuresRGB_pub.publish(image_msg);    
-
-    auto t2= Clock::now();
-    std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
-    loop_rate.sleep();
-  }
-  
-  return 0 ;
-  //ros::spin();
+   
+  ros::spin();
 
 }
