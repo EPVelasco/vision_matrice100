@@ -744,7 +744,7 @@ int main(int argc, char** argv)
   err_servo_pub = nh.advertise<geometry_msgs::TwistStamped>("/dji_sdk/visual_servoing/errores", 10);
   time_pub = nh.advertise<vision_matrice100::DurationStamped>("/dji_sdk/visual_servoing/runtime", 10);  
 
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(20);
 
   while (ros::ok())
   {    
