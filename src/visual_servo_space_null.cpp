@@ -72,6 +72,7 @@ float angle_desired = 0;
 float vx_lineal = 0.2; // velocidad hacia adelante en espacios nulos (m/s)
 
 double d_panel_d = 300.0;//  distancia al panel deseada en pixeles
+double d_panel_r = 0; // inicializacion de la  distancia al panel real en pixeles
 
 ros::Time delay_ros;
  
@@ -299,7 +300,7 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
   // altura deseada y actual sacadas por la dsitancia entre los puntos medios sacados del panel.
   // estas generan un error que van a espacios nulos y que s emultiplican por una ganancia k_k
 
-  double d_panel_r = sqrt(pow((x_r-x_l),2)+pow((y_l-y_r),2)); //  distancia al panel real en pixeles
+  d_panel_r = sqrt(pow((x_r-x_l),2)+pow((y_l-y_r),2)); //  distancia al panel real en pixeles
  
   
   double pixel_factor = (d_panel_r/d_panel_d)*100;
@@ -799,8 +800,10 @@ int main(int argc, char** argv)
     err_servo_msg.twist.linear.x =  err_r;    // errores de r no normalizado (0.0 -r)
     err_servo_msg.twist.linear.y =  err_theta;    // errores de theta no normalizado (angulo_deseado th)
     err_servo_msg.twist.linear.z =  r_aux;  //  normalizado
-    err_servo_msg.twist.angular.x = err_theta;  // errores de theta normalizado
-
+    err_servo_msg.twist.angular.x = d_panel_d;  // valor deseado del panel
+    err_servo_msg.twist.angular.y = vx_lineal;  // velocidad deseada
+    err_servo_msg.twist.angular.y = d_panel_r-d_panel_d;  // error entre ancho real y desaedo del panel
+    
     //err_servo_pub.publish(err_servo_msg);
       
     sensor_msgs::ImagePtr image_msg;
