@@ -802,7 +802,7 @@ int main(int argc, char** argv)
     err_servo_msg.twist.linear.z =  r_aux;  //  normalizado
     err_servo_msg.twist.angular.x = d_panel_d;  // valor deseado del panel
     err_servo_msg.twist.angular.y = vx_lineal;  // velocidad deseada
-    err_servo_msg.twist.angular.y = d_panel_r-d_panel_d;  // error entre ancho real y desaedo del panel
+    err_servo_msg.twist.angular.z = d_panel_r-d_panel_d;  // error entre ancho real y desaedo del panel
     
     //err_servo_pub.publish(err_servo_msg);
       
