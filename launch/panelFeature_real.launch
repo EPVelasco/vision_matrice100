@@ -9,8 +9,23 @@
     <param name="real_sim"    type="bool"   value="True" />
 
     <param name="area_filter" type="double" value="600.0" /> <!-- valor de 600-->
-    <param name="hsv_v" type="double" value="200.0" /> <!-- valor entre 200 a 255 , el real probar con 250-->
-    <param name="hsv_s" type="double" value="100.0" /> <!-- valor entre 0 a 100 -->
+
+
+    <!-- Valores de filtrado por hsv  H-> Matiz (0-179) S-> Saturacion (0-100) V- Valor de luminosidad (0-255)-->
+
+    <!-- El H varía desde 0° (rojo), pasando por 120° (verde) y 240° (azul), y luego vuelve a 360° (rojo). -->
+    <!-- La S Indica la pureza o intensidad del color. 
+    Valores bajos de saturación tienden hacia el gris y valores altos muestran colores más intensos. -->
+    <!-- La V Representa la luminancia o el brillo del color. Puede variar desde negro (0) hasta el color máximo  -->
+
+    <param name="h_low"  type="double" value="0.0" /> 
+    <param name="s_low"  type="double" value="0.0" /> 
+    <param name="v_low"  type="double" value="200.0" />
+
+    <param name="h_high" type="double" value="179.0" /> 
+    <param name="s_high" type="double" value="100.0" /> 
+    <param name="v_high" type="double" value="255.0" /> 
+
 
     <param name="imgTopic"   type="str" value="/camera/color/image_raw"/>
 

@@ -20,7 +20,6 @@ blancos, estos valores son ajustables desde el launch. Despues de esto estos pun
 #include <iostream>
 #include <chrono> 
 #include "vision_matrice100/DurationStamped.h"
-#include <std_msgs/Float32MultiArray.h>
 
 
 typedef std::chrono::high_resolution_clock Clock;
@@ -49,32 +48,8 @@ float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
 
-float h_low = 0;
-float s_low = 0;
-float v_low = 200;
-
-float h_high = 179;
-float s_high = 100;
-float v_high = 255;
-
-void callback_img(const std_msgs::Float32MultiArray &img_params){
-
-  h_low = img_params.data[0];
-  s_low = img_params.data[1];
-  v_low = img_params.data[2];
-
-  h_high = img_params.data[3];
-  s_high = img_params.data[4];
-  v_high = img_params.data[5];
-  std::cout<<"***Parametros de filtro modificados***" <<std::endl;
-  std::cout<<"h_low: " <<h_low <<std::endl;
-  std::cout<<"s_low: " <<s_low <<std::endl;
-  std::cout<<"v_low: " <<v_low <<std::endl;
-  std::cout<<"h_high: " <<h_high <<std::endl;
-  std::cout<<"s_high: " <<s_high <<std::endl;
-  std::cout<<"v_high: " <<v_high <<std::endl;
-}
-
+float hsv_v = 200;
+float hsv_s = 100;
 
 void callback(const ImageConstPtr& in_image)
 {
@@ -104,8 +79,8 @@ void callback(const ImageConstPtr& in_image)
 
   if (real_sim) // bandera para escoger entre la simulacion y el real (real == True) (sim == False)
   {
-    lowerWhite = cv::Scalar(h_low, s_low, v_low);  // Umbral inferior para blanco
-    upperWhite = cv::Scalar(h_high, s_high, v_high);  // Umbral superior para blanco
+    lowerWhite = cv::Scalar(0, 0, hsv_v);  // Umbral inferior para blanco
+    upperWhite = cv::Scalar(180, hsv_s, 255);  // Umbral superior para blanco
   }
   else
   {
@@ -268,12 +243,8 @@ int main(int argc, char** argv)
   nh.getParam("/imgTopic", imgTopic);
   nh.getParam("/area_filter", area_filter); 
   nh.getParam("/real_sim",real_sim);
-  nh.getParam("/h_low", h_low); 
-  nh.getParam("/s_low",s_low);
-  nh.getParam("/v_low", v_low); 
-  nh.getParam("/h_high",h_high);
-  nh.getParam("/s_high", s_high); 
-  nh.getParam("/v_high",v_high);
+  nh.getParam("/hsv_v", hsv_v); 
+  nh.getParam("/hsv_s",hsv_s);
  
   /// Load Parameters
   std::cout<<"Panel Image mask Real initialized... :)";
@@ -283,8 +254,6 @@ int main(int argc, char** argv)
     std::cout<<"Modo Simulacion";
 
   ros::Subscriber sub = nh.subscribe<Image>(imgTopic, 10, callback);
-  ros::Subscriber sub_2 = nh.subscribe("/img_params", 10, callback_img); 
-
   panelFeatures_pub         = nh.advertise<sensor_msgs::Image>("/panel/image/mask", 10);  
   panel_w_LinesFeatures_pub = nh.advertise<sensor_msgs::Image>("/panel/image/rgb_mask", 10);  
   panel_hsvfilter = nh.advertise<sensor_msgs::Image>("/panel/image/hsv_mask", 10);  
