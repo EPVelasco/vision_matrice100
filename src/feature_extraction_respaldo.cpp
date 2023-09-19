@@ -191,7 +191,7 @@ void callback(const ImageConstPtr& in_image)
 
       if (std::abs(angle) < 135 && std::abs(angle) > 45 ) {
         cv::line(mono_resultImage, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 255, 255), 1, cv::LINE_AA);
-        cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(0, 0, 255), 3, cv::LINE_AA);
+        cv::line(rgb_image, pt1_out_lin, pt2_out_lin, cv::Scalar(255, 0, 0), 3, cv::LINE_AA);
       }
    }
   
