@@ -135,16 +135,17 @@ void callback(const ImageConstPtr& in_image)
   // Binarizar la imagen utilizando el rango de colores blanco
   // cv::Mat binaryImage;
   // cv::inRange(hsvImage, lowerWhite, upperWhite, binaryImage);
-  cv::Mat result = hsvImage.clone();
-  cv::bitwise_and(result, result, result, full_mask);
+  // cv::Mat result;
+  // cv::Mat binaryImage;
+  // cv::bitwise_and(result, hsvImage, binaryImage, full_mask);
 
   // Buscar los contornos en la imagen binaria
   std::vector<std::vector<cv::Point>> contours;
-  cv::findContours(result, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
+  cv::findContours(full_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
  
   double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
   // Crear una imagen de salida para mostrar los contornos filtrados
-  cv::Mat outputImage = cv::Mat::zeros(result.size(), CV_8UC3);
+  cv::Mat outputImage = cv::Mat::zeros(full_mask.size(), CV_8UC3);
 
   // Filtrar los contornos más pequeños
   std::vector<cv::Vec4f> lines_input;
