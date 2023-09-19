@@ -20,7 +20,7 @@
 
     <param name="h_low"  type="double" value="160.0" /> 
     <param name="s_low"  type="double" value="0.0" /> 
-    <param name="v_low"  type="double" value="100.0" />
+    <param name="v_low"  type="double" value="0.0" />
 
     <param name="h_high" type="double" value="179.0" /> 
     <param name="s_high" type="double" value="100.0" /> 
