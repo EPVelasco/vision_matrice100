@@ -13,7 +13,7 @@
 
     <!-- Valores de filtrado por hsv  H-> Matiz (0-179) S-> Saturacion (0-100) V- Valor de luminosidad (0-255)-->
 
-    <!-- El H varía desde 0° (rojo), pasando por 120° (verde) y 240° (azul), y luego vuelve a 360° (rojo). -->
+    <!-- El H varía desde 0° (rojo), pasando por 60° (verde) y 120° (azul), y luego vuelve a 179° (rojo). -->
     <!-- La S Indica la pureza o intensidad del color. 
     Valores bajos de saturación tienden hacia el gris y valores altos muestran colores más intensos. -->
     <!-- La V Representa la luminancia o el brillo del color. Puede variar desde negro (0) hasta el color máximo  -->
