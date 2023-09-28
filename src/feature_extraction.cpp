@@ -38,13 +38,7 @@ ros::Publisher time_pub;          // tiempo de ejecucion
 // topics a suscribirse del nodo
 std::string imgTopic   = "/camera/color/image_raw";
 
-float rho = 1;
-float theta = 90;
 float threshold = 50;
-float minLineLen = 50;
-float maxLineGap = 10;
-float minCan = 20;
-float maxCan = 50;
 float ang_t = 0;
 float area_filter = 800.0; // 800 para real, 40 para simulado (tambien se modifica en el launch)
 bool real_sim = true;  // (real == True) (sim == False)
@@ -118,32 +112,22 @@ void callback(const ImageConstPtr& in_image)
   cv::Mat hsvImage;
   cv::cvtColor(rgb_image, hsvImage, cv::COLOR_BGR2HSV);
 
-     // Define el rango superior para el color rojo en el espacio de color HSV
-    cv::Scalar lower2(160, s_low, v_low);
-    cv::Scalar upper2(179, s_high, v_high);
+  // Define el rango superior para el color rojo en el espacio de color HSV (solo para preubas en escenario de pruebas)
+  cv::Scalar lower2(160, s_low, v_low);
+  cv::Scalar upper2(179, s_high, v_high);
 
-    // Crea una máscara para los valores de color dentro del rango inferior
-    cv::Mat lower_mask, upper_mask, full_mask;
-    cv::inRange(hsvImage, lowerWhite, upperWhite, lower_mask);
-    cv::inRange(hsvImage, lower2, upper2, upper_mask);
-    full_mask = lower_mask + upper_mask;
+  // Crea una máscara para los valores de color dentro del rango inferior
+  cv::Mat lower_mask, upper_mask, full_mask;
+  cv::inRange(hsvImage, lowerWhite, upperWhite, lower_mask);
+  cv::inRange(hsvImage, lower2, upper2, upper_mask);
+  full_mask = lower_mask + upper_mask;
 
-
-
-
-
-  // Binarizar la imagen utilizando el rango de colores blanco
-  // cv::Mat binaryImage;
-  // cv::inRange(hsvImage, lowerWhite, upperWhite, binaryImage);
-  // cv::Mat result;
-  // cv::Mat binaryImage;
-  // cv::bitwise_and(result, hsvImage, binaryImage, full_mask);
+  //full_mask = lower_mask;
 
   // Buscar los contornos en la imagen binaria
   std::vector<std::vector<cv::Point>> contours;
   cv::findContours(full_mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);  
- 
-  double areaThreshold = area_filter; // Ajusta el umbral de área según tus necesidades
+
   // Crear una imagen de salida para mostrar los contornos filtrados
   cv::Mat outputImage = cv::Mat::zeros(full_mask.size(), CV_8UC3);
 
@@ -152,10 +136,10 @@ void callback(const ImageConstPtr& in_image)
   for (size_t i = 0; i < contours.size(); i++)
   {
       double area = cv::contourArea(contours[i]);
-      if (area > areaThreshold)
+      if (area > area_filter)
       {
           // Dibujar los contornos filtrados en la imagen de salida
-          cv::Scalar color(255, 255, 255); // Color verde
+          cv::Scalar color(255, 255, 255); 
           cv::drawContours(outputImage, contours, static_cast<int>(i), color, 2) ;
       }
   }
@@ -277,13 +261,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "panelFeatures_real");
   ros::NodeHandle nh;  
 
-  nh.getParam("/rho", rho);
-  nh.getParam("/theta", theta);
   nh.getParam("/threshold", threshold);
-  nh.getParam("/minLineLen", minLineLen);
-  nh.getParam("/maxLineGap", maxLineGap);
-  nh.getParam("/minCan", minCan);
-  nh.getParam("/maxCan", maxCan);
   nh.getParam("/imgTopic", imgTopic);
   nh.getParam("/area_filter", area_filter); 
   nh.getParam("/real_sim",real_sim);

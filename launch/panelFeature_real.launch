@@ -2,7 +2,7 @@
 <launch>
 
 	<param name="rho"         type="double" value="1.0" />
-	<param name="theta"       type="double" value="0.017452778" />
+    <param name="angle_desired"       type="double" value="0.0" />    
     <param name="threshold"   type="double" value="10.0" />
     <param name="minLineLen"  type="double" value="10.0" />
     <param name="maxLineGap"  type="double" value="10.0" />
@@ -11,7 +11,7 @@
     <param name="area_filter" type="double" value="600.0" /> <!-- valor de 600-->
 
 
-    <!-- Valores de filtrado por hsv  H-> Matiz (0-179) S-> Saturacion (0-100) V- Valor de luminosidad (0-255)-->
+    <!-- Valores de filtrado por hsv  H-> Matiz (0-179) S-> Saturacion (0-255) V- Valor de luminosidad (0-255)-->
 
     <!-- El H varía desde 0° (rojo), pasando por 60° (verde) y 120° (azul), y luego vuelve a 179° (rojo). -->
     <!-- La S Indica la pureza o intensidad del color. 

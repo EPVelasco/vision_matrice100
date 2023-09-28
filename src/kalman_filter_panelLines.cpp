@@ -194,8 +194,8 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
 
   // Convertir el quaternion a una matriz de rotación
   tf::Matrix3x3 m(q);
-  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
 
+  // Convertir la matriz de rotación a una matriz de transformación de la librería Eigen
   Eigen::Matrix3f  R_odom = Eigen::Matrix3f::Identity();
 
   geometry_msgs::Twist velocity = odom_msg->twist.twist;
@@ -246,7 +246,6 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
   int imageHeight = rgb_image.rows; // rows
   int imageWidth  = rgb_image.cols; // cols
 
-
   /////////////////////////////////////////////////// Inicio  de Filtrado de la imagen a COLOR //////////////////////////////////////////
  
   // Definir el rango de colores blanco en HSV
@@ -267,8 +266,7 @@ void callback(const ImageConstPtr& in_rgb, const ImageConstPtr& in_depth, const 
   std::thread thread_1(rgb_filter, std::ref(image_in),lowerWhite,upperWhite);
 
   ////////////////////////////////////////////////////////// Fin del filtrado de la imagen a color //////////////////////////////////////////////////////
-  
-  
+    
   cv::Mat mono_resultImage   = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC1);
   cv::Mat outputImage_points = cv::Mat::zeros(imageHeight, imageWidth, CV_8UC3);
 

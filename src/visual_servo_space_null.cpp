@@ -66,7 +66,7 @@ std::string vel_drone_topic = "/dji_sdk/visual_servoing/vel/drone";
 bool control_ok = true;
 
 float rho_hough = 1;
-float theta = CV_PI/180;
+//float theta = CV_PI/180;
 float threshold = 100;
 float angle_desired = 0;
 float vx_lineal = 0.2; // velocidad hacia adelante en espacios nulos (m/s)
@@ -135,6 +135,8 @@ void signalHandler(int signum)
 ///////////////////////////////////////callback
 void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
 {
+  auto t1= Clock::now();
+
   ros::Time start_time = ros::Time::now();
 
   cv_bridge::CvImagePtr  cv_maskImg;
@@ -670,7 +672,8 @@ void callback(const ImageConstPtr& in_mask, const OdometryConstPtr& odom_msg)
  ros::Time time_mask = in_mask->header.stamp;
  ros::Duration delay_pro = end_time - start_time; 
  delay_ros = time_mask + delay_pro;
-
+  auto t11= Clock::now();
+  std::cout<<"time total (ms): "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t11-t1).count()/1000000.0<<std::endl;
 }
 
 
@@ -688,7 +691,7 @@ int main(int argc, char** argv)
   nh.getParam("/odom_dron", odom_dron);
 
   nh.getParam("/rho", rho_hough);
-  nh.getParam("/theta", theta);
+  // nh.getParam("/theta", theta);
   nh.getParam("/threshold", threshold);
 
   nh.getParam("/control_ok", control_ok);
@@ -820,7 +823,7 @@ int main(int argc, char** argv)
     featuresRGB_pub.publish(image_msg);    
 
     auto t2= Clock::now();
-    std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
+    //std::cout<< std::chrono::duration_cast<std::chrono::nanoseconds>(t2-t1).count()/1000000.0<<std::endl;
     loop_rate.sleep();
   }
   
